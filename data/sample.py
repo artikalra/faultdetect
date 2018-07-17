@@ -1,5 +1,6 @@
 import bisect
 import math
+from scipy.integrate import quad
 
 
 class Samples:
@@ -48,4 +49,31 @@ class Samples:
                 L2distances.append(dist)
         return L2distances
 
+
+
+# This integration should be clubbed with the L2distance calculated above
+#def integrand(x):
+#    return x ** 2
+#ans, err = quad(integrand, 0, 1)
+#print(ans)
+
+#Things to fix
+# There are some issues in the integration part.
+# The limits of the integral are not given properly that is why the answer is wrong
+    def integrand(self):
+        FinalDistances =[]
+        for time in range(len(self._times)):
+            def distance(self,t):
+                L2distances = []
+                # l = list(self)
+                for m in range(1, len(list(self)) - 1):
+                    # for k in range(6):
+                    dist = math.sqrt(sum([(a - b) ** 2 for a, b in zip(self._data[:m][0], self._data[:m + 1][0])]))
+                    print("Euclidean distance between the accelerometer and gyro parameters: ", dist)
+                    L2distances.append(dist)
+                    return L2distances
+                    return dist
+                    ans, err = quad(integrand, self._times[time], self._times[time+1])
+                    FinalDistances.append(ans)
+                    return FinalDistances
 

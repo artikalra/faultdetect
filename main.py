@@ -5,7 +5,14 @@ if __name__ == '__main__':
    # print(samples._data[:1][0][0])
    # print(samples[33.38:330.513])
    # print(samples[33.447])
-    print(range(len(list(samples))))
-    print(samples.distance())
+   #print(range(len(list(samples))))
+   # print(samples.distance())
+    print(samples.integrand())
+
+
+
+
+
+
 
 
