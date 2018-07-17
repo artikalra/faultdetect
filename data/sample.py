@@ -2,7 +2,7 @@ import bisect
 import math
 from scipy.integrate import quad
 
-
+# Sample Class
 class Samples:
 
     def __init__(self):
