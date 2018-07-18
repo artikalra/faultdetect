@@ -11,9 +11,9 @@ if __name__ == '__main__':
     print(samples.integrand())
     #finaldistances=[]
     #for time in range(50):
-       # ans = quad(samples.integrand, samples._times[time], samples._times[time+1])
-        #finaldistances.append(ans)
-        #print(finaldistances)
+      #  ans = quad(samples.integrand, samples._times[time], samples._times[time+1])
+      #  finaldistances.append(ans)
+       # print(finaldistances)
 
 
 

@@ -78,12 +78,12 @@ class Samples:
                     # for k in range(6):
                     dist = sum([(a - b) ** 2 for a, b in zip(self._data[:m][m-1], self._data[:m + 1][m])])
                     #print("Euclidean distance between the accelerometer and gyro parameters: ", dist)
-                    l2distances.append(dist)
+                    #l2distances.append(dist)
                     #print(l2distances)
                     return l2distances
 
                     return dist
-        #print(self._times[time], self._times[time+1])
+                    print(dist)
                     ans, err = quad(integrand(), self._times[time], self._times[time+1])
                     finaldistances.append(ans)
         print(finaldistances)
