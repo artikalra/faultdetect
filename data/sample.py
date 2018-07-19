@@ -38,19 +38,15 @@ class Samples:
 # Things to fix:
 # It is to be checked that time between any two samples is constant or not
 # also a and b represent ax, ay, az but here it is taking all parameters in the data
-#
+
+#This function is just to calculate the L2Distances
     def distance(self):
         L2distances = []
-        #l = list(self)
         #for m in range(1,(len(self._data)-1)):
         for m in range(1,50 ):
             #for k in range(6):
                 dist = math.sqrt(sum([(a - b) ** 2 for a, b in zip(self._data[:m][m-1], self._data[:(m+1)][m])]))
                 #dist = math.sqrt(sum((self._data[:(m+1)][0][k] - self._data[:(m+2)][0][k])  ))
-                #dist = 30;
-                #print(self._data[:m][m-1], self._data[:(m + 1)][m])
-            #for a, b in zip(self._data[:m][0], self._data[:m + 1][0])
-                #print(a,b)
                 print("Euclidean distance between the accelerometer and gyro parameters: ", dist)
                 L2distances.append(dist)
         return L2distances
@@ -63,28 +59,14 @@ class Samples:
 #ans, err = quad(integrand, 0, 1)
 #print(ans)
 
-#Things to fix
-# There are some issues in the integration part.
-# The limits of the integral are not given properly that is why the answer is wrong
-    def integrand(self):
-        finaldistances =[]
-        #for time in range(len(self._times)):
-        for time in range(50):
-            def distance(self,t):
-                l2distances = []
-                # l = list(self)
+#This function is again the to find the L2distances to give as an input for the integration
+    def integrand(self,t):
+        for time in range(len(self._times)):
+            l2distances = []
                 #for m in range(1, len(list(self)) - 1):
-                for m in range(1, 50):
-                    # for k in range(6):
-                    dist = sum([(a - b) ** 2 for a, b in zip(self._data[:m][m-1], self._data[:m + 1][m])])
-                    #print("Euclidean distance between the accelerometer and gyro parameters: ", dist)
-                    #l2distances.append(dist)
-                    #print(l2distances)
-                    return l2distances
-
-                    return dist
-                    print(dist)
-                    ans, err = quad(integrand(), self._times[time], self._times[time+1])
-                    finaldistances.append(ans)
-        print(finaldistances)
-
+            for m in range(1, 41):
+                        # for k in range(6):
+                dist = sum([(a - b) ** 2 for a, b in zip(self._data[:m][m-1], self._data[:m + 1][m])])
+                #print("Euclidean distance between the accelerometer and gyro parameters: ", dist)
+                l2distances.append(dist)
+            return l2distances
