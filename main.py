@@ -26,7 +26,7 @@ if __name__ == '__main__':
                 # for k in range(6):
             dist = sum([(a - b) ** 2 for a, b in zip(samples._data[:m][m - 1], samples._data[:(m + 1)][m])])
             t = Symbol('t')
-        ans = integrate(dist, (t , samples._times[time], samples._times[time+1]))
+        ans = integrate(dist, (t , samples._times[time], samples._times[time+10]))
         sol = ans/(samples._times[time+1]-samples._times[time])
         finaldistances.append(sol)
     print(finaldistances)
