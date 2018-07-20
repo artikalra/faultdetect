@@ -1,5 +1,7 @@
 import util.filereader as rd
 from scipy.integrate import quad
+import math
+import numpy as np
 
 if __name__ == '__main__':
     samples = rd.parse("data/17_07_06__10_21_07_SD.data")
@@ -18,18 +20,19 @@ if __name__ == '__main__':
         #finaldistances.append(ans)
         #print(finaldistances)
 
-#Integration of the square of L2norm
+#Integration of the square of L2norm for all the distances
     from sympy import *
     finaldistances=[]
     for time in range(50):
         for m in range(1, 51):
+            for n in range(1,51):
                 # for k in range(6):
-            dist = sum([(a - b) ** 2 for a, b in zip(samples._data[:m][m - 1], samples._data[:(m + 1)][m])])
-            t = Symbol('t')
-        ans = integrate(dist, (t , samples._times[time], samples._times[time+10]))
-        sol = ans/(samples._times[time+1]-samples._times[time])
-        finaldistances.append(sol)
-    print(finaldistances)
+                dist = sum([(a - b) ** 2 for a, b in zip(samples._data[:m][m - 1], samples._data[:(n + 1)][n])])
+                t = Symbol('t')
+                ans = integrate(dist, (t , samples._times[time], samples._times[time+10]))
+                sol = math.sqrt(ans/(samples._times[time+10]-samples._times[time]))
+            finaldistances.append(sol)
+    print(np.reshape(np.asarray(finaldistances),(50,50)))
 
 
 
