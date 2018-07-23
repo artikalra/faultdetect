@@ -1,7 +1,7 @@
 import bisect
 import math
 from scipy.integrate import quad
-
+import numpy as np
 # Sample Class
 class Samples:
 
@@ -70,3 +70,40 @@ class Samples:
                 #print("Euclidean distance between the accelerometer and gyro parameters: ", dist)
                 l2distances.append(dist)
             return l2distances
+
+
+#to obtain quaternions
+    def KinematicModel(self,w,q):
+        # inputs : state_prev  .:. states from the previous time t - 1.
+        #                          q = [q0 q1 q2 q3 p q r]'
+        #                          where;
+        #                               q = q0 + q1 * i + q2 * j + q3 * k
+        #                               w .:. describes the angular motion of the body
+        #                                     frame b with respect to navigation frame
+        #                                     North East Down(NED), expressed in body frame
+        #                               w = [p q r]'
+        # outputs : q_dot  .:. time derivative of quaternions
+        #
+        # q .:. quaternion
+        # q = q0 + q1 * i + q2 * j + q3 * k
+        q0,q1,q2,q3 = q
+        # w .:. angular velocity vector with components p, q, r
+        # w = [p q r]'
+        # w describes the angular motion of the body frame b with respect to
+        # navigation frame NED, expressed in body frame.
+        quat_normalize_gain = 1.0
+        #
+        m1 = np.array([[-q1,-q2,-q3],[q0,-q3,q2],[q3,q0,-q1],[-q2,q1,q0]])
+        q_dot = 1.0/2.0*m1.dot(w) + quat_normalize_gain*(1-(q0**2 + q1**2 + q2**2 + q3**2))*q
+        return q_dot
+
+
+    #to integrate using Runge-kutta
+    def RK4(self, f, w0, q0, h):
+        w,q = w0,q0
+        k1 = h * f(w, q)
+        k2 = [h * f(p + 0.5 * h, r + 0.5 * k1) for p,r in zip(w,q)]
+        k3 = [h * f(p + 0.5 * h, r + 0.5 * k2) for p,r in zip(w,q)]
+        k4 = [h * f(p + h, r + k3) for p,r in zip(w,q)]
+        q = q + (k1 + k2 + k2 + k3 + k3 + k4) / 6. # *h is missing or not ?
+        return q
