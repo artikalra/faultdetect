@@ -58,7 +58,7 @@ if __name__ == '__main__':
         #prev_quaternion = Quaternion(quatern_fault[:,i-1])
         my_quaternion= Quaternion(quatern_fault[:,i])
         #quatern_log_prev[:, i-1] = Quaternion.log(prev_quaternion)
-        #print(my_quaternion)
+        #print(my_quaternion) test
         quatern_log[:, i] = Quaternion.log(my_quaternion)
         #quatern_log[:, i] = Quaternion.log(Quaternion((quatern_fault[:,i])))
         quatern_dist[:,i] = Quaternion.distance(Quaternion((quatern_fault[:,i])),Quaternion((quatern_fault[:,i-1])))
