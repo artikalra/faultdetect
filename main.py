@@ -35,8 +35,8 @@ if __name__ == '__main__':
 #to compute the quaternions from the rotation rates obtained from the data
 # Suppose that we have a w vector(all zero for this, but you will use real values from your data...):
 
-#    from pyquaternion import Quaternion
-"""
+    from pyquaternion import Quaternion
+
     # Allocate
     #quatern_fault = np.zeros((4,(len(samples._data)+1)))
     quatern_fault = np.zeros((4, 5))
@@ -66,10 +66,10 @@ if __name__ == '__main__':
     print((quatern_fault))
     print(quatern_log)
     print(quatern_dist)
+
+
+
 """
-
-
-
 from data.Quaternionlog import Quaternion
 
 # Allocate
@@ -100,3 +100,4 @@ for i in range(1, 5):
 
 print((quatern_fault))
 print(quatern_log)
+"""
