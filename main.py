@@ -27,7 +27,7 @@ if __name__ == '__main__':
     #print(distanceMatrix)
 
 
-    cl = Clustering(4, distanceMatrix)
+    #cl = Clustering(4, distanceMatrix)
     #print(cl.medioids)
     #print(cl.clusters)
 
@@ -40,8 +40,8 @@ if __name__ == '__main__':
     # Allocate
     #quatern_fault = np.zeros((4,(len(samples._data)+1)))
     quatern_fault = np.zeros((4, 5))
-    quatern_log = np.zeros((4, 5))
-    quatern_dist = np.zeros((4,5))
+    quatern_log = []
+    quatern_dist = np.zeros((5,))
     #my_quaternion = Quaternion(quatern_fault)
 
     #quatern_log_prev = np.zeros((4, 23))
@@ -59,13 +59,13 @@ if __name__ == '__main__':
         my_quaternion= Quaternion(quatern_fault[:,i])
         #quatern_log_prev[:, i-1] = Quaternion.log(prev_quaternion)
         #print(my_quaternion) test
-        quatern_log[:, i] = Quaternion.log(my_quaternion)
+        quatern_log.append(Quaternion.log(my_quaternion))
         #quatern_log[:, i] = Quaternion.log(Quaternion((quatern_fault[:,i])))
-        quatern_dist[:,i] = Quaternion.distance(Quaternion((quatern_fault[:,i])),Quaternion((quatern_fault[:,i-1])))
+        #quatern_dist[i] = Quaternion.distance(Quaternion((quatern_fault[:,i])),Quaternion((quatern_fault[:,i-1])))
 
     print((quatern_fault))
     print(quatern_log)
-    print(quatern_dist)
+    #print(quatern_dist)
 
 
 
