@@ -32,40 +32,50 @@ if __name__ == '__main__':
     #print(cl.clusters)
 
 
-#to compute the quaternions from the rotation rates obtained from the data
-# Suppose that we have a w vector(all zero for this, but you will use real values from your data...):
+#to compute the quaternions from the rotation rates obtained from the data  and then take their logarithm
+# And to calculate the distance between the quaternions
+
 
     from pyquaternion import Quaternion
 
-    # Allocate
     #quatern_fault = np.zeros((4,(len(samples._data)+1)))
     quatern_fault = np.zeros((4, 5))
     quatern_log = []
-    quatern_dist = np.zeros((5,))
-    #my_quaternion = Quaternion(quatern_fault)
+    #quatern_dist = np.zeros((5,))
+    quatern_dist = []
 
-    #quatern_log_prev = np.zeros((4, 23))
     quatern_fault[:,0] = [1.,0.,0.,0.]
     # h is the time step, delta_t, which is constant for the momoent as 0.02s (50Hz of data acquisition), but you can also make it variable too
     h = 0.02
 
-
     #for i in range(1,len(samples._data)-1):
     for i in range(1, 5):
-        #quatern_fault [:,i]= samples.RK4((samples.KinematicModel(samples._data[:i][i-1][1:4], quatern_fault[:,0])), samples._data[:i][i-1][1:4], quatern_fault[:,i], h)
-        function = samples.KinematicModel(samples._data[:i][i - 1][1:4], quatern_fault[:, 0])
-        quatern_fault[:,i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]), quatern_fault[:,i-1], h)
-        #prev_quaternion = Quaternion(quatern_fault[:,i-1])
-        my_quaternion= Quaternion(quatern_fault[:,i])
-        #quatern_log_prev[:, i-1] = Quaternion.log(prev_quaternion)
-        #print(my_quaternion) test
-        quatern_log.append(Quaternion.log(my_quaternion))
-        #quatern_log[:, i] = Quaternion.log(Quaternion((quatern_fault[:,i])))
-        #quatern_dist[i] = Quaternion.distance(Quaternion((quatern_fault[:,i])),Quaternion((quatern_fault[:,i-1])))
+        for n in range(1, 5):
+            #quatern_fault [:,i]= samples.RK4((samples.KinematicModel(samples._data[:i][i-1][1:4], quatern_fault[:,0])), samples._data[:i][i-1][1:4], quatern_fault[:,i], h)
+            function = samples.KinematicModel(samples._data[:i][i - 1][1:4], quatern_fault[:, 0])
+            quatern_fault[:,i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]), quatern_fault[:,i-1], h)
 
-    print((quatern_fault))
-    print(quatern_log)
-    #print(quatern_dist)
+            my_quaternion= Quaternion(quatern_fault[:,i])
+            log = Quaternion.log(my_quaternion)
+            quatern_log.append(log)
+
+            #quatern_log[:, i] = Quaternion.log(Quaternion((quatern_fault[:,i])))
+            #quatern_dist = Quaternion.distance(Quaternion((quatern_fault[:,i])),Quaternion((quatern_fault[:,i-1])))
+            #print(quatern_dist)
+
+            list_log = np.ndarray.tolist(log.vector)
+
+            dist = sum([(a - b) ** 2 for a, b in zip(list_log[:i][0:3], list_log[:n][0:3])])
+            t = Symbol('t')
+            ans = integrate(dist, (t,samples._data[:i][i - 1][0], samples._data[:(i + 5)][i][0]))
+            sol = math.sqrt(ans / (samples._data[:(i + 5)][i][0] - samples._data[:i][i- 1][0]))
+            quatern_dist.append(sol)
+
+    quatdistanceMatrix = np.reshape(np.asarray(quatern_dist), (4, 4))
+
+    #print((quatern_fault))
+    #print(quatern_log)
+    print(quatdistanceMatrix)
 
 
 
