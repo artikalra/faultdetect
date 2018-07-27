@@ -13,8 +13,8 @@ if __name__ == '__main__':
 # to compute to integration of the square of L2norm for all the trajectories
     from sympy import *
     finaldistances = []
-    for m in range(18001, 28001):
-        for n in range(18001, 28001):
+    for m in range(1, len(samples._data)-1):
+        for n in range(1, len(samples._data)-1):
             # dist = sum([(a - b) ** 2 for a, b in zip(samples._data[:m][m - 1], samples._data[:(n + 1)][n])])
             #print(samples._data[:m][m-1][4:7])
             #print(samples._data[:n][n - 1][4:7])#to use only for the accelerometer components
@@ -23,8 +23,8 @@ if __name__ == '__main__':
             ans = integrate(dist, (t, samples._data[:m][m-1][0], samples._data[:(m+5)][m][0]))
             sol = math.sqrt(ans / (samples._data[:(m+5)][m][0] - samples._data[:m][m-1][0]))
             finaldistances.append(sol)
-    distanceMatrix = np.reshape(np.asarray(finaldistances), (10000, 10000))
-    #print(distanceMatrix)
+    distanceMatrix = np.reshape(np.asarray(finaldistances), ((len(samples._data)-2), (len(samples._data)-2)))
+    print(distanceMatrix)
 
 
     #cl = Clustering(4, distanceMatrix)
@@ -39,7 +39,8 @@ if __name__ == '__main__':
     from pyquaternion import Quaternion
 
     #quatern_fault = np.zeros((4,(len(samples._data)+1)))
-    quatern_fault = np.zeros((4, 10001))
+    #quatern_fault = np.zeros((4, 11))
+    quatern_fault = np.zeros((4, len(samples._data)-1))
     quatern_log = []
     #quatern_dist = np.zeros((5,))
     quatern_dist = []
@@ -51,34 +52,46 @@ if __name__ == '__main__':
 
 
 
-
+    #print(len(samples._data))
     # for i in range(1,len(samples._data)-1):
-    for i in range(18001, 28001):
-        for n in range(18001, 28001):
+    for i in range(1, len(samples._data)-1):
+        for n in range(1, len(samples._data)-1):
             # quatern_fault [:,i]= samples.RK4((samples.KinematicModel(samples._data[:i][i-1][1:4], quatern_fault[:,0])), samples._data[:i][i-1][1:4], quatern_fault[:,i], h)
             function = samples.KinematicModel(samples._data[:i][i - 1][1:4], quatern_fault[:, 0])
             quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
                                               quatern_fault[:, i - 1], h)
 
-            my_quaternion = Quaternion(quatern_fault[:, i])
-            log = Quaternion.log(my_quaternion)
-            quatern_log.append(log)
+            #my_quaternion = Quaternion(quatern_fault[:, i])
+            #log = Quaternion.log(my_quaternion)
+            #quatern_log.append(log)
 
+            if n < i :
             # quatern_log[:, i] = Quaternion.log(Quaternion((quatern_fault[:,i])))
-            quatern_dist = Quaternion.distance(Quaternion((quatern_fault[:, i])), Quaternion((quatern_fault[:, n])))
+                quatern_dist = Quaternion.distance(Quaternion((quatern_fault[:, i])), Quaternion((quatern_fault[:, n])))
 
-            t = Symbol('t')
-            ans = integrate(quatern_dist, (t, samples._data[:i][i-1][0], samples._data[:(i+5)][i][0]))
-            sol = math.sqrt(ans / (samples._data[:(i+5)][i][0] - samples._data[:i][i-1][0]))
+                t = Symbol('t')
+                ans = integrate(quatern_dist, (t, samples._data[:i][i-1][0], samples._data[:(i+5)][i][0]))
+                sol = math.sqrt(ans / (samples._data[:(i+5)][i][0] - samples._data[:i][i-1][0]))
+
             quat_dist.append(sol)
-    quatdistanceMatrix = np.reshape(np.asarray(quat_dist), (10000, 10000))
-    for i in range(0,9999):
-        for n in range (1,10000):
-            quatdistanceMatrix[i][n] = quatdistanceMatrix[n][i]
+
+    quatdistanceMatrix = np.reshape(np.asarray(quat_dist), (len(samples._data)-2, len(samples._data)-2))
+
+
+    for i in range(0,len(samples._data)-2):
+        for n in range (1,len(samples._data)-2):
+            if n == i:
+                quatdistanceMatrix[i][n] = 0
+            else:
+                quatdistanceMatrix[i][n] = quatdistanceMatrix[n][i]
+
+
+
     #print(quatdistanceMatrix)
     #quatdistanceMatrix[i][i+1]= quatdistanceMatrix[i][i-1]
-    #print(quatdistanceMatrix)
+    print(quatdistanceMatrix)
     # print(quat_dist)
+
     final_matrix = distanceMatrix + quatdistanceMatrix
     #print(final_matrix)
 
