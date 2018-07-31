@@ -26,60 +26,44 @@ if __name__ == '__main__':
     """
     breakn = 10
     new_array=[]
-    for i in range(20600):
+    for i in range(20669):
         #print (i)
         new_array.append(np.mean(samples._data[i*breakn:(i+1)*breakn-1][:], 0))
     #print(np.array(new_array))
-
-    """
-    for n in range(1,20):
-        for m in range(x, y):
-            ans =np.mean((np.array(samples._data[:m][m-1])), axis=0)
-        x=y
-        y=x+10
-        smallsample.append(ans)
-    print((smallsample))
-    ###
-    """
     samples._data = new_array
-
-
-    #print(len(samples._data[::10]))
+    print("downsampling done")
 
 
 
 # to compute to integration of the square of L2norm for all the trajectories
     from sympy import *
+    distances=[]
     finaldistances = []
     for m in range(1, len(samples._data)-1):
+        print(m)
         for n in range(1, len(samples._data)-1):
             # dist = sum([(a - b) ** 2 for a, b in zip(samples._data[:m][m - 1], samples._data[:(n + 1)][n])])
-            #print(samples._data[:m][m-1][4:7])
-            #print(samples._data[:n][n - 1][4:7])#to use only for the accelerometer components
             dist = sum([(a - b) ** 2 for a, b in zip(samples._data[:m][m - 1][4:7], samples._data[:n][n - 1][4:7])])
-            t = Symbol('t')
-            ans = integrate(dist, (t, samples._data[:m][m-1][0], samples._data[:(m+200)][m][0]))
+            #t = Symbol('t')
+            #ans = integrate(dist, (t, samples._data[:m][m-1][0], samples._data[:(m+200)][m][0]))
+            distances.append(dist)
+            breakn=200
+            ans = sum(distances[m:m+breakn])
             sol = math.sqrt(ans / (samples._data[:(m+200)][m][0] - samples._data[:m][m-1][0]))
             finaldistances.append(sol)
     distanceMatrix = np.reshape(np.asarray(finaldistances), ((len(samples._data)-2), (len(samples._data)-2)))
     #print(distanceMatrix)
 
 
-    #cl = Clustering(4, distanceMatrix)
-    #print(cl.medioids)
-    #print(cl.clusters)
-    #print(len(samples._data))
-
 #to compute the quaternions from the rotation rates obtained from the data  and then take their logarithm
-# And to calculate the distance between the quaternions
-
+#And to calculate the distance between the quaternions
 
     from pyquaternion import Quaternion
 
     #quatern_fault = np.zeros((4,(len(samples._data)+1)))
     #quatern_fault = np.zeros((4, 11))
     quatern_fault = np.zeros((4, len(samples._data)-1))
-    quatern_log = []
+    quatern_distances = []
     #quatern_dist = np.zeros((5,))
     quatern_dist = []
     quat_dist =[]
@@ -89,32 +73,24 @@ if __name__ == '__main__':
     h = 0.2
 
 
-
-    #print(len(samples._data))
-    # for i in range(1,len(samples._data)-1):
     for i in range(1, len(samples._data)-1):
+        print(i)
         for n in range(1, len(samples._data)-1):
             # quatern_fault [:,i]= samples.RK4((samples.KinematicModel(samples._data[:i][i-1][1:4], quatern_fault[:,0])), samples._data[:i][i-1][1:4], quatern_fault[:,i], h)
             function = samples.KinematicModel(samples._data[:i][i - 1][1:4], quatern_fault[:, 0])
             quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
                                               quatern_fault[:, i - 1], h)
 
-            #my_quaternion = Quaternion(quatern_fault[:, i])
-            #log = Quaternion.log(my_quaternion)
-            #quatern_log.append(log)
-
-
-
             if n < i :
-            # quatern_log[:, i] = Quaternion.log(Quaternion((quatern_fault[:,i])))
+            # #quatern_log[:, i] = Quaternion.log(Quaternion((quatern_fault[:,i])))
                 quatern_dist = Quaternion.distance(Quaternion((quatern_fault[:, i])), Quaternion((quatern_fault[:, n])))
-
-                t = Symbol('t')
-                ans = integrate(quatern_dist, (t, samples._data[:i][i-1][0], samples._data[:(i+200)][i][0]))
+                quatern_distances.append(quatern_dist)
+                #t = Symbol('t')
+                #ans = integrate(quatern_dist, (t, samples._data[:i][i-1][0], samples._data[:(i+200)][i][0]))
+                breakn=200
+                ans = sum(quatern_distances[i:i+breakn])
                 sol = math.sqrt(ans / (samples._data[:(i+200)][i][0] - samples._data[:i][i-1][0]))
-
             quat_dist.append(sol)
-
     quatdistanceMatrix = np.reshape(np.asarray(quat_dist), (len(samples._data)-2, len(samples._data)-2))
 
 
@@ -125,13 +101,6 @@ if __name__ == '__main__':
             else:
                 quatdistanceMatrix[i][n] = quatdistanceMatrix[n][i]
 
-
-
-    #print(quatdistanceMatrix)
-    #quatdistanceMatrix[i][i+1]= quatdistanceMatrix[i][i-1]
-    #print(quatdistanceMatrix)
-    # print(quat_dist)
-
     final_matrix = distanceMatrix + quatdistanceMatrix
     #print(final_matrix)
 
@@ -139,19 +108,7 @@ if __name__ == '__main__':
     print(cl.medioids)
     print(cl.clusters)
 
-    # list_log = np.ndarray.tolist(log.vector)
 
-    # dist = sum([(a - b) ** 2 for a, b in zip(list_log[:i][0:3], list_log[:n][0:3])])
-    # t = Symbol('t')
-    # ans = integrate(dist, (t,samples._data[:i][i - 1][0], samples._data[:(i + 5)][i][0]))
-    # sol = math.sqrt(ans / (samples._data[:(i + 5)][i][0] - samples._data[:i][i- 1][0]))
-    # quatern_dist.append(sol)
-
-    # quatdistanceMatrix = np.reshape(np.asarray(quatern_dist), (4, 4))
-
-    # print((quatern_fault))
-    # print(quatern_log)
-    # print(quatdistanceMatrix)
 
     """
     # for i in range(1,len(samples._data)-1):
