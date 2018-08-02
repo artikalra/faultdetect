@@ -1,14 +1,17 @@
 import util.filereader as rd
+import scipy
 import math
 import numpy as np
 from data.cluster import Clustering
 
 
 
+
 if __name__ == '__main__':
     samples = rd.parse("data/17_07_06__10_21_07_SD.data")
 
-    #for m in range(len(samples._data)):
+
+
     """
     x=1
     y=11
@@ -26,12 +29,34 @@ if __name__ == '__main__':
     """
     breakn = 10
     new_array=[]
-    for i in range(20669):
+    for i in range(20):
         #print (i)
         new_array.append(np.mean(samples._data[i*breakn:(i+1)*breakn-1][:], 0))
     #print(np.array(new_array))
     samples._data = new_array
     print("downsampling done")
+
+
+
+    coeff = scipy.integrate.newton_cotes(len(samples._data))
+    print(coeff)
+
+    def integrate(function, a, b):
+        ##coeff = [7, 32, 12, 32, 7]
+        result = 0
+        for i in range(0, len(coeff)):
+            x = a + (i * (b - a)) / (len(coeff) - 1)
+            result += coeff[i] * function(x)
+        result = result * ((b - a) / sum(coeff))
+        return result
+
+
+    def func(x):
+        #return x ** 0*distances
+        return x ** 3 - 4 * x + 9
+
+
+    print(integrate(func, -7.0, 7.0))
 
 
 
@@ -104,9 +129,9 @@ if __name__ == '__main__':
     final_matrix = distanceMatrix + quatdistanceMatrix
     #print(final_matrix)
 
-    cl = Clustering(4, final_matrix)
-    print(cl.medioids)
-    print(cl.clusters)
+    #cl = Clustering(4, final_matrix)
+    #print(cl.medioids)
+    #print(cl.clusters)
 
 
 
