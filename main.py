@@ -10,12 +10,13 @@ if __name__ == '__main__':
 
     # Downsampling
     breakn = 10
-    new_array = np.zeros((2000, 7))
+    new_array = np.zeros((100, 7))
     for i in range(len(new_array)):
         new_array[i, :] = np.mean(samples._data[i * breakn:(i + 1) * breakn - 1][:], 0)
         # print(new_array)
     samples._data = new_array
     print("downsampling done")
+    print(len(samples._data))
 
     """
     coeff = scipy.integrate.newton_cotes(len(samples._data))
@@ -38,65 +39,95 @@ if __name__ == '__main__':
     """
 
     # to compute to integration of the square of L2norm for all the trajectories
-    distances = np.zeros((1, len(samples._data) - 1))
-    finaldistances = np.zeros((1, (len(samples._data) - 2) * (len(samples._data) - 2)))  # ((len(samples._data)-2)* (len(samples._data)-2))
-    for m in range(1, len(samples._data) - 1):
+    breakn = 10
+    d = 0
+    ssize = len(samples._data) - breakn
+    finaldistances = np.zeros((ssize * ssize,))  # ((len(samples._data)-2)* (len(samples._data)-2))
+    i = 0
+
+    for m in range(1, ssize + 1):
         if m % 1000 == 0:
             print('dist ', m)
-        for n in range(1, len(samples._data) - 1):
-            # dist = sum([(a - b) ** 2 for a, b in zip(samples._data[:m][m - 1], samples._data[:(n + 1)][n])])
-            distances[:, m] = sum([(a - b) ** 2 for a, b in zip(samples._data[m - 1][4:7], samples._data[n-1][4:7])])
-            # t = Symbol('t')
-            # ans = integrate(dist, (t, samples._data[:m][m-1][0], samples._data[:(m+200)][m][0]))
-            #print(distances)
-            breakn = 10
-            ans = sum(distances[m:m + breakn])
-            finaldistances[:, m] = math.sqrt(ans / (samples._data[m][0] - samples._data[m - 1][0]))
-    distanceMatrix = np.reshape((finaldistances), ((len(samples._data) - 2), (len(samples._data) - 2)))
-    print(distanceMatrix)
+        for n in range(1, ssize + 1):
+            d = 0.0
+            for j in range(0, breakn):
+                d += np.sum(
+                    [(a - b) ** 2 for a, b in zip(samples._data[m - 1 + j][4:7], samples._data[n - 1 + j][4:7])])
+            finaldistances[i] = math.sqrt(d)
+            i += 1
+ #   print(finaldistances[0:300])
+    distanceMatrix = np.reshape((finaldistances), (ssize, ssize))
+  #  print(distanceMatrix)
 
     # to compute the quaternions from the rotation rates obtained from the data  and then take their logarithm
     # And to calculate the distance between the quaternions
 
-    # from pyquaternion import Quaternion
-    #
-    # quatern_fault = np.zeros((4, len(samples._data) - 1))
-    # quatern_dist = np.zeros((1, len(samples._data) - 1))
-    # quatern_distances = np.zeros((1, (len(samples._data) - 2) * (len(samples._data) - 2)))
-    # quatern_fault[:, 0] = [1., 0., 0., 0.]
-    #
-    # # h is the time step, delta_t, which is constant for the momoent as 0.02s (50Hz of data acquisition), but you can also make it variable too
-    # h = 0.2
-    #
-    # for i in range(1, len(samples._data) - 1):
-    #     if i % 1000 == 0:
-    #         print('quat ', i)
-    #
-    #     # quatern_fault [:,i]= samples.RK4((samples.KinematicModel(samples._data[:i][i-1][1:4], quatern_fault[:,0])), samples._data[:i][i-1][1:4], quatern_fault[:,i], h)
-    #     function = samples.KinematicModel(samples._data[i - 1][1:4], quatern_fault[:, 0])
-    #     quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[i - 1][1:4]),
-    #                                       quatern_fault[:, i - 1], h)
-    #     for n in range(1, i):
-    #         # quatern_log[:, i] = Quaternion.log(Quaternion((quatern_fault[:,i])))
-    #         quatern_dist[:, i] = Quaternion.distance(Quaternion((quatern_fault[:, i])), Quaternion((quatern_fault[:, n])))
-    #         # t = Symbol('t')
-    #         # ans = integrate(quatern_dist, (t, samples._data[:i][i-1][0], samples._data[:(i+200)][i][0]))
-    #         breakn = 10
-    #         ans = sum(quatern_distances[i:i + breakn])
-    #         quatern_distances[:, i] = math.sqrt(ans / (samples._data[i][0] - samples._data[i - 1][0]))
-    #
-    # quatdistanceMatrix = np.reshape((quatern_distances), (len(samples._data) - 2, len(samples._data) - 2))
-    #
-    # for i in range(0, len(samples._data) - 2):
-    #     for n in range(1, len(samples._data) - 2):
-    #         if n == i:
-    #             quatdistanceMatrix[i][n] = 0
-    #         else:
-    #             quatdistanceMatrix[i][n] = quatdistanceMatrix[n][i]
 
-    final_matrix = distanceMatrix  #+ quatdistanceMatrix
-    # print(final_matrix)
+
+
+    from pyquaternion import Quaternion
+
+    quatern_fault = np.zeros((4, len(samples._data) - 1))
+    quatern_dist = np.zeros((1, len(samples._data) - 1))
+    quatern_distances = np.zeros((1, (len(samples._data) - 2) * (len(samples._data) - 2)))
+    quatern_fault[:, 0] = [1., 0., 0., 0.]
+
+    # h is the time step, delta_t, which is constant for the momoent as 0.02s (50Hz of data acquisition), but you can also make it variable too
+    h = 0.2
+
+    from pyquaternion import Quaternion
+
+    q = 0
+    breakn = 10
+    ssize = len(samples._data) - breakn
+    quatdistances = np.zeros((ssize * ssize,))
+    quatern_fault = np.zeros((4, ssize))
+    quatern_fault[:, 0] = [1., 0., 0., 0.]
+
+    # # h is the time step, delta_t, which is constant for the momoent as 0.02s (50Hz of data acquisition), but you can also make it variable too
+    h = 0.2
+
+    p=0
+    for i in range(1, ssize ):
+        if i % 1000 == 0:
+            print('quat ', i)
+        quatern_fault[:, i] = samples.RK4(samples.KinematicModel, (samples._data[i-1][1:4]),(quatern_fault[:, i - 1]), h)
+        #print(quatern_fault[:,i])
+
+        for n in range(1, ssize ):
+            q=0.0
+            #print(quatern_fault[:, n - 1])
+
+            for j in range(0, breakn):
+                #print(quatern_fault[:, i + j - breakn - 1 ])
+
+                q += Quaternion.distance(Quaternion((quatern_fault[:, i - breakn + j-1])),
+                                         Quaternion((quatern_fault[:, n - breakn + j-1])))
+                quatdistances[p] = math.sqrt(q)
+                p += 1
+        quatdistanceMatrix = np.reshape((quatdistances), (ssize, ssize))
+
+    final_matrix = distanceMatrix + quatdistanceMatrix
 
     cl = Clustering(4, final_matrix)
     print(cl.medioids)
+    with open('res.txt','w') as f:
+        for p in cl.clusters:
+            f.write(str(p[0])+','+str(p[1])+'\n')
     print(cl.clusters)
+    
+"""
+    for i in range(0, len(samples._data) - 2):
+        for n in range(1, len(samples._data) - 2):
+            if n == i:
+                quatdistanceMatrix[i][n] = 0
+            else:
+                quatdistanceMatrix[i][n] = quatdistanceMatrix[n][i]
+
+    print(quatdistanceMatrix)
+    """
+
+
+    # print(final_matrix)
+
+
