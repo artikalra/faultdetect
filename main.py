@@ -2,7 +2,7 @@ import util.filereader as rd
 import math
 import numpy as np
 
-# from data.cluster import Clustering
+from data.cluster import Clustering
 
 if __name__ == '__main__':
     samples = rd.parse("data/17_07_06__10_21_07_SD.data")
@@ -58,7 +58,7 @@ if __name__ == '__main__':
             i += 1
     #   print(finaldistances[0:300])
     distanceMatrix = np.reshape((finaldistances), (ssize, ssize))
-    #  print(distanceMatrix)
+
 
     # to compute the quaternions from the rotation rates obtained from the data  and then take their logarithm
     # And to calculate the distance between the quaternions
@@ -81,6 +81,7 @@ if __name__ == '__main__':
     quatdistances = np.zeros((ssize * ssize,))
     quatern_fault = np.zeros((4, ssize + breakn))
     quatern_fault[:, 0] = [1., 0., 0., 0.]
+
 
     # # h is the time step, delta_t, which is constant for the momoent as 0.02s (50Hz of data acquisition), but you can also make it variable too
     h = 0.2
@@ -108,12 +109,16 @@ if __name__ == '__main__':
     print(quatdistanceMatrix)
     final_matrix = distanceMatrix + quatdistanceMatrix
 
+    #print(final_matrix)
+
+
     cl = Clustering(4, final_matrix)
     print(cl.medioids)
     with open('res.txt', 'w') as f:
         for p in cl.clusters:
             f.write(str(p[0]) + ',' + str(p[1]) + '\n')
     print(cl.clusters)
+
 
 """
     for i in range(0, len(samples._data) - 2):
@@ -124,6 +129,7 @@ if __name__ == '__main__':
                 quatdistanceMatrix[i][n] = quatdistanceMatrix[n][i]
 
     print(quatdistanceMatrix)
-    """
+   
+   """
 
-# print(final_matrix)
+
