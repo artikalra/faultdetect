@@ -1,7 +1,8 @@
 import util.filereader as rd
 import math
 import numpy as np
-from data.cluster import Clustering
+
+# from data.cluster import Clustering
 
 if __name__ == '__main__':
     samples = rd.parse("data/17_07_06__10_21_07_SD.data")
@@ -55,15 +56,12 @@ if __name__ == '__main__':
                     [(a - b) ** 2 for a, b in zip(samples._data[m - 1 + j][4:7], samples._data[n - 1 + j][4:7])])
             finaldistances[i] = math.sqrt(d)
             i += 1
- #   print(finaldistances[0:300])
+    #   print(finaldistances[0:300])
     distanceMatrix = np.reshape((finaldistances), (ssize, ssize))
-  #  print(distanceMatrix)
+    #  print(distanceMatrix)
 
     # to compute the quaternions from the rotation rates obtained from the data  and then take their logarithm
     # And to calculate the distance between the quaternions
-
-
-
 
     from pyquaternion import Quaternion
 
@@ -81,41 +79,42 @@ if __name__ == '__main__':
     breakn = 10
     ssize = len(samples._data) - breakn
     quatdistances = np.zeros((ssize * ssize,))
-    quatern_fault = np.zeros((4, ssize))
+    quatern_fault = np.zeros((4, ssize + breakn))
     quatern_fault[:, 0] = [1., 0., 0., 0.]
 
     # # h is the time step, delta_t, which is constant for the momoent as 0.02s (50Hz of data acquisition), but you can also make it variable too
     h = 0.2
 
-    p=0
-    for i in range(1, ssize ):
+    p = 0
+    for i in range(1, ssize + breakn):
+        quatern_fault[:, i] = samples.RK4(samples.KinematicModel, (samples._data[i - 1][1:4]),
+                                          (quatern_fault[:, i - 1]), h)
+    for i in range(1, ssize + 1):
         if i % 1000 == 0:
             print('quat ', i)
-        quatern_fault[:, i] = samples.RK4(samples.KinematicModel, (samples._data[i-1][1:4]),(quatern_fault[:, i - 1]), h)
-        #print(quatern_fault[:,i])
-
-        for n in range(1, ssize ):
-            q=0.0
-            #print(quatern_fault[:, n - 1])
+        # print(quatern_fault[:,i])
+        for n in range(1, ssize + 1):
+            q = 0.0
+            # print(quatern_fault[:, n - 1])
 
             for j in range(0, breakn):
-                #print(quatern_fault[:, i + j - breakn - 1 ])
+                # print(quatern_fault[:, i + j - breakn - 1 ])
 
-                q += Quaternion.distance(Quaternion((quatern_fault[:, i - breakn + j-1])),
-                                         Quaternion((quatern_fault[:, n - breakn + j-1])))
-                quatdistances[p] = math.sqrt(q)
-                p += 1
+                q += Quaternion.distance(Quaternion((quatern_fault[:, i + j - 1])),
+                                         Quaternion((quatern_fault[:, n + j - 1])))
+            quatdistances[p] = math.sqrt(q)
+            p += 1
         quatdistanceMatrix = np.reshape((quatdistances), (ssize, ssize))
-
+    print(quatdistanceMatrix)
     final_matrix = distanceMatrix + quatdistanceMatrix
 
     cl = Clustering(4, final_matrix)
     print(cl.medioids)
-    with open('res.txt','w') as f:
+    with open('res.txt', 'w') as f:
         for p in cl.clusters:
-            f.write(str(p[0])+','+str(p[1])+'\n')
+            f.write(str(p[0]) + ',' + str(p[1]) + '\n')
     print(cl.clusters)
-    
+
 """
     for i in range(0, len(samples._data) - 2):
         for n in range(1, len(samples._data) - 2):
@@ -127,7 +126,4 @@ if __name__ == '__main__':
     print(quatdistanceMatrix)
     """
 
-
-    # print(final_matrix)
-
-
+# print(final_matrix)
