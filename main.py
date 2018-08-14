@@ -11,7 +11,7 @@ if __name__ == '__main__':
 
     # Downsampling
     breakn = 10
-    new_array = np.zeros((100, 7))
+    new_array = np.zeros((7000, 7))
     for i in range(len(new_array)):
         new_array[i, :] = np.mean(samples._data[i * breakn:(i + 1) * breakn - 1][:], 0)
         # print(new_array)
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     i = 0
 
     for m in range(1, ssize + 1):
-        if m % 1000 == 0:
+        if m % 100 == 0:
             print('dist ', m)
         for n in range(1, ssize + 1):
             d = 0.0
@@ -91,7 +91,7 @@ if __name__ == '__main__':
         quatern_fault[:, i] = samples.RK4(samples.KinematicModel, (samples._data[i - 1][1:4]),
                                           (quatern_fault[:, i - 1]), h)
     for i in range(1, ssize + 1):
-        if i % 1000 == 0:
+        if i % 100 == 0:
             print('quat ', i)
         # print(quatern_fault[:,i])
         for n in range(1, ssize + 1):
@@ -114,7 +114,7 @@ if __name__ == '__main__':
 
     cl = Clustering(4, final_matrix)
     print(cl.medioids)
-    with open('res.txt', 'w') as f:
+    with open('res100.txt', 'w') as f:
         for p in cl.clusters:
             f.write(str(p[0]) + ',' + str(p[1]) + '\n')
     print(cl.clusters)
