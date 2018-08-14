@@ -9,7 +9,7 @@ if __name__ == '__main__':
 
     # Downsampling
     breakn = 10
-    new_array = np.zeros((100, 7))
+    new_array = np.zeros((20669, 7))
     for i in range(len(new_array)):
         new_array[i, :] = np.mean(samples._data[i * breakn:(i + 1) * breakn - 1][:], 0)
         # print(new_array)
