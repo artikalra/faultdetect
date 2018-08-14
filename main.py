@@ -7,17 +7,73 @@ from data.cluster import Clustering
 if __name__ == '__main__':
     samples = rd.parse("data/17_07_06__10_21_07_SD.data")
 
-    # for m in range(len(samples._data)):
-
     # Downsampling
     breakn = 10
-    new_array = np.zeros((7000, 7))
+    new_array = np.zeros((100, 7))
     for i in range(len(new_array)):
         new_array[i, :] = np.mean(samples._data[i * breakn:(i + 1) * breakn - 1][:], 0)
         # print(new_array)
     samples._data = new_array
     print("downsampling done")
     print(len(samples._data))
+
+
+#function to calculate the geodesic distance between two curves
+    def geod_dim(gamma_i, gamma_f, m, dim):
+        '''
+         Developed by Alice Le Brigant
+         Translated into Python by Murat Bronz
+
+         Calcule la géodésique SRV entre deux courbes dans R3, càd le chemin de
+         courbes qui relie les origines par une droite et qui interpole
+         linéairement entre les  SRVF (vitesses renormalisées par la racine carrée
+         de leur norme).
+
+         Inputs :
+         - gamma_i [dim x(n+1)] : courbe initiale
+         - gamma_f [dim x(n+1)] : courbe finale
+         - m : discrétisation en temps de la géodésique
+
+         Outputss :
+         - c [dim x(n+1)x(m+1)] : chemin de courbes géodésique de gamma_i à gamma_f
+         - L : longueur de c = distance between gamma_i and gamma_f  '''
+        n = len(gamma_i[0]) - 1
+        T = np.linspace(0, 1, m + 1)
+        taui = gamma_i[:, 1:n + 1] - gamma_i[:, 0:n]
+        tauf = gamma_f[:, 1:n + 1] - gamma_f[:, 0:n]
+        Ni = Nf = 0.0
+        for i in range(dim):
+            Ni += taui[i, :] ** 2
+            Nf += tauf[i, :] ** 2
+        Ni = Ni ** (1 / 4)
+        Nf = Nf ** (1 / 4)
+        # % Ni(Ni==0) = ones(size(Ni(Ni==0)));
+        # % Nf(Nf==0) = ones(size(Nf(Nf==0)));
+        qi = np.sqrt(n) * taui / np.tile(Ni, [dim, 1])  # 3 for 3 dimension, so change it to 6 for 6 dimnesions
+        qf = np.sqrt(n) * tauf / np.tile(Nf, [dim, 1])
+        TT = np.transpose(np.tile(np.tile(T, [dim, 1]), [n, 1, 1]), (1, 0, 2))
+        A = np.transpose(np.tile(qi, [m + 1, 1, 1]), (1, 2, 0))
+        B = np.transpose(np.tile(qf, [m + 1, 1, 1]), (1, 2, 0))
+        q = A * (np.ones([dim, n, m + 1]) - TT) + B * TT  # .dot multiplication ?
+        AAA = 0.0
+        for i in range(dim):
+            AAA += q[i, :, :] ** 2
+        tau = 1 / n * np.transpose(np.tile(np.squeeze(AAA), [dim, 1, 1]) ** (1 / 2),
+                                   [0, 1, 2]) * q  # tau=1/n*|q|*q # No need for transpose here for python ?
+        c = np.zeros([dim, n + 1, m + 1])
+        c[:, 0, :] = np.tile(np.ones([1, m + 1]) - T, [dim, 1]) * np.tile(gamma_i[:, 0], [m + 1, 1]).T + np.tile(T,
+                                                                                                                 [dim,
+                                                                                                                  1]) * np.tile(
+            gamma_f[:, 0], [m + 1, 1]).T  # les origines sont reliées par une droite
+        c[:, 1:n + 1, :] = tau
+        c = np.cumsum(c, 1)  # check this dimension 1, in matlab it was 2...
+        d1 = sum((gamma_f[:, 0] - gamma_i[:, 0]) ** 2)
+        d2 = 1 / n * sum(sum((qf - qi) ** 2, 0))
+        L = np.sqrt(d1 + d2)
+        return L
+    # for m in range(len(samples._data)):
+
+
 
     """
     coeff = scipy.integrate.newton_cotes(len(samples._data))
@@ -38,7 +94,7 @@ if __name__ == '__main__':
 
     print(integrate(func, -7.0, 7.0))
     """
-
+    """
     # to compute to integration of the square of L2norm for all the trajectories
     breakn = 10
     d = 0
@@ -65,23 +121,12 @@ if __name__ == '__main__':
 
     from pyquaternion import Quaternion
 
-    quatern_fault = np.zeros((4, len(samples._data) - 1))
-    quatern_dist = np.zeros((1, len(samples._data) - 1))
-    quatern_distances = np.zeros((1, (len(samples._data) - 2) * (len(samples._data) - 2)))
-    quatern_fault[:, 0] = [1., 0., 0., 0.]
-
-    # h is the time step, delta_t, which is constant for the momoent as 0.02s (50Hz of data acquisition), but you can also make it variable too
-    h = 0.2
-
-    from pyquaternion import Quaternion
-
     q = 0
     breakn = 10
     ssize = len(samples._data) - breakn
     quatdistances = np.zeros((ssize * ssize,))
     quatern_fault = np.zeros((4, ssize + breakn))
     quatern_fault[:, 0] = [1., 0., 0., 0.]
-
 
     # # h is the time step, delta_t, which is constant for the momoent as 0.02s (50Hz of data acquisition), but you can also make it variable too
     h = 0.2
@@ -110,26 +155,66 @@ if __name__ == '__main__':
     final_matrix = distanceMatrix + quatdistanceMatrix
 
     #print(final_matrix)
+ """
+
+    #TO calculate distances between accelerometer components
+    breakn = 10
+    d = 0
+    ssize = len(samples._data) - breakn
+    finaldistances = np.zeros((ssize * ssize,))  # ((len(samples._data)-2)* (len(samples._data)-2))
+    i = 0
+
+    for m in range(1, ssize + 1):
+        if m % 100 == 0:
+            print('dist ', m)
+        c1 = (samples._data[m-1:m + breakn-1, 4:7]).T
+        #print(c1.shape)
+        for n in range(1, ssize + 1):
+            c2 = (samples._data[n-1:n+breakn-1, 4:7]).T
+            d = geod_dim(c1, c2, 1, 3)
+            finaldistances[i] = d
+            i += 1
+    distanceMatrix = np.reshape((finaldistances), (ssize, ssize))
+    #print(distanceMatrix)
+
+    # TO calculate distances between spinnors
+    from pyquaternion import Quaternion
+    q = 0
+    breakn = 10
+    ssize = len(samples._data) - breakn
+    quatdistances = np.zeros((ssize * ssize,))
+    quatern_fault = np.zeros((4, ssize + breakn))
+    spinnors = np.zeros((4, ssize + breakn))
+    quatern_fault[:, 0] = [1., 0., 0., 0.]
+
+    # # h is the time step, delta_t, which is constant for the momoent as 0.02s (50Hz of data acquisition), but you can also make it variable too
+    h = 0.2
+    p = 0
+    for i in range(1, ssize + breakn):
+        quatern_fault[:, i] = samples.RK4(samples.KinematicModel, (samples._data[i - 1][1:4]),
+                                          (quatern_fault[:, i - 1]), h)
+        quat = Quaternion(quatern_fault[:, i])
+        spinnors[:,i]= Quaternion.log(quat)
+    for i in range(1, ssize + 1):
+        if i % 100 == 0:
+            print('quat ', i)
+        c1 = (spinnors[1:4,i - 1:i + breakn - 1])
+        for n in range(1, ssize + 1):
+            c2 = (spinnors[1:4,n - 1:n + breakn - 1])
+            q = geod_dim(c1, c2, 1, 3)
+            quatdistances[p] = q
+            p += 1
+    quatdistanceMatrix = np.reshape((quatdistances), (ssize, ssize))
+    #print(quatdistanceMatrix)
+
+    finalMatrix=distanceMatrix + quatdistanceMatrix
+    print(finalMatrix)
 
 
-    cl = Clustering(4, final_matrix)
+    cl = Clustering(4, finalMatrix)
     print(cl.medioids)
-    with open('res100.txt', 'w') as f:
+    with open('results.txt', 'w') as f:
         for p in cl.clusters:
             f.write(str(p[0]) + ',' + str(p[1]) + '\n')
     print(cl.clusters)
-
-
-"""
-    for i in range(0, len(samples._data) - 2):
-        for n in range(1, len(samples._data) - 2):
-            if n == i:
-                quatdistanceMatrix[i][n] = 0
-            else:
-                quatdistanceMatrix[i][n] = quatdistanceMatrix[n][i]
-
-    print(quatdistanceMatrix)
-   
-   """
-
 
