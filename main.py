@@ -7,9 +7,30 @@ from data.cluster import Clustering
 if __name__ == '__main__':
     samples = rd.parse("data/17_07_06__10_21_07_SD.data")
 
+    #Calculation of spinnors
+    from pyquaternion import Quaternion
+    # quatern_fault = np.zeros((4,(len(samples._data)+1)))
+    quatern_fault = np.zeros((4, len(samples._data)))
+    spinnors = []
+    quatern_fault[:, 0] = [1., 0., 0., 0.]
+
+    h = 0.2
+
+    # for i in range(1,len(samples._data)-1):
+    for i in range(1, len(samples._data)):
+        if i % 100 == 0:
+            print('spin ', i)
+        quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
+                                          quatern_fault[:, i - 1], h)
+        my_quaternion = Quaternion(quatern_fault[:, i])
+        log = Quaternion.log(my_quaternion)
+        spinnors.append(log)
+    print(len(spinnors))
+    print(len(samples._data))
+
     # Downsampling
     breakn = 10
-    new_array = np.zeros((20669, 7))
+    new_array = np.zeros((200, 7))
     for i in range(len(new_array)):
         new_array[i, :] = np.mean(samples._data[i * breakn:(i + 1) * breakn - 1][:], 0)
         # print(new_array)
@@ -157,6 +178,10 @@ if __name__ == '__main__':
     #print(final_matrix)
  """
 
+
+    def symmetrize(matrix):
+        return matrix + matrix.T
+
     #TO calculate distances between accelerometer components
     breakn = 10
     d = 0
@@ -170,12 +195,13 @@ if __name__ == '__main__':
         c1 = (samples._data[m-1:m + breakn-1, 4:7]).T
         #print(c1.shape)
         for n in range(1, ssize + 1):
-            c2 = (samples._data[n-1:n+breakn-1, 4:7]).T
-            d = geod_dim(c1, c2, 1, 3)
-            finaldistances[i] = d
+            if n < m:
+                c2 = (samples._data[n-1:n+breakn-1, 4:7]).T
+                d = geod_dim(c1, c2, 1, 3)
+                finaldistances[i] = d
             i += 1
-    distanceMatrix = np.reshape((finaldistances), (ssize, ssize))
-    #print(distanceMatrix)
+    distanceMatrix = symmetrize(np.reshape((finaldistances), (ssize, ssize)))
+    print(distanceMatrix)
 
     # TO calculate distances between spinnors
     from pyquaternion import Quaternion
@@ -195,17 +221,20 @@ if __name__ == '__main__':
                                           (quatern_fault[:, i - 1]), h)
         quat = Quaternion(quatern_fault[:, i])
         spinnors[:,i]= Quaternion.log(quat)
+
+
     for i in range(1, ssize + 1):
         if i % 100 == 0:
             print('quat ', i)
         c1 = (spinnors[1:4,i - 1:i + breakn - 1])
         for n in range(1, ssize + 1):
-            c2 = (spinnors[1:4,n - 1:n + breakn - 1])
-            q = geod_dim(c1, c2, 1, 3)
-            quatdistances[p] = q
+            if n < i:
+                c2 = (spinnors[1:4,n - 1:n + breakn - 1])
+                q = geod_dim(c1, c2, 1, 3)
+                quatdistances[p] = q
             p += 1
-    quatdistanceMatrix = np.reshape((quatdistances), (ssize, ssize))
-    #print(quatdistanceMatrix)
+    quatdistanceMatrix = symmetrize(np.reshape((quatdistances), (ssize, ssize)))
+    print(quatdistanceMatrix)
 
     finalMatrix=distanceMatrix + quatdistanceMatrix
     print(finalMatrix)
