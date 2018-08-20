@@ -31,7 +31,7 @@ if __name__ == '__main__':
     samples._data = np.hstack((quatspinnors.T,np.array(samples._data)))
     print((samples._data).shape)
 
-    # Downsampling
+    ## Downsampling
     breakn = 10
     new_array = np.zeros((20669, 10))
     for i in range(len(new_array)):
