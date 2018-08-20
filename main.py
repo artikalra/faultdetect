@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
     ## Downsampling
     breakn = 10
-    new_array = np.zeros((20669, len(samples._data[0,:])))
+    new_array = np.zeros((4000, len(samples._data[0,:])))
     for i in range(len(new_array)):
         new_array[i, :] = np.mean(samples._data[i * breakn:(i + 1) * breakn - 1][:], 0)
         # print(new_array)
@@ -110,11 +110,12 @@ if __name__ == '__main__':
     for m in range(1, ssize + 1):
         if m % 100 == 0:
             print('dist ', m)
-        c1 = (samples._data[m - 1:m + breakn - 1, 4:10]).T
-        # print(c1.shape)
+
+        c1 = np.concatenate(((samples._data[m - 1:m + breakn - 1, 4:7]).T,(samples._data[m - 1:m + breakn - 1, 11:14]).T))
+        #print(c1.shape)
         for n in range(1, ssize + 1):
             if n < m:
-                c2 = (samples._data[n - 1:n + breakn - 1, 4:10]).T
+                c2 = np.concatenate(((samples._data[n - 1:n + breakn - 1, 4:7]).T,(samples._data[n - 1:n + breakn - 1, 11:14]).T))
                 d = geod_dim(c1, c2, 1, 6)
                 finaldistances[i] = d
             i += 1
