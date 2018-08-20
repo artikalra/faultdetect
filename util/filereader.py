@@ -28,3 +28,4 @@ def parse(filename):
                 samples.insert((t, ox, oy, oz, ax, ay, az, sj, sk, sl, sm ))
                 p = 0
     return samples
+#
