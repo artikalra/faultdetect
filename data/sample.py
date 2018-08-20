@@ -35,9 +35,6 @@ class Samples:
             return self._data[n]
 
 
-# Things to fix:
-# It is to be checked that time between any two samples is constant or not
-# also a and b represent ax, ay, az but here it is taking all parameters in the data
 
 #This function is just to calculate the L2Distances
     def distance(self):
@@ -92,12 +89,9 @@ class Samples:
         # w describes the angular motion of the body frame b with respect to
         # navigation frame NED, expressed in body frame.
         quat_normalize_gain = 1.0
-        #
         m1 = np.array([[-q1,-q2,-q3],[q0,-q3,q2],[q3,q0,-q1],[-q2,q1,q0]])
         omega= np.array(w)
         q_dot = 1.0/2.0*m1.dot(omega) + quat_normalize_gain*(1-(q0**2 + q1**2 + q2**2 + q3**2))*q
-        #print(m1)
-        #print(1.0/2.0*m1.dot(omega))
         return q_dot
 
 
@@ -108,8 +102,5 @@ class Samples:
         k2 = h * f(w + 0.5 * h, q + 0.5 * k1)
         k3 = h * f(w + 0.5 * h, q + 0.5 * k2)
         k4 = h * f(w + h, q + k3)
-        #k2 = np.dot(h,[f(p + 0.5 * h, r + 0.5 * k1) for p, r in zip(w, q)])
-        #k3 = np.dot(h,[f(p + 0.5 * h, r + 0.5 * k2) for p, r in zip(w, q)])
-        #k4 = np.dot(h,[f(p + h, r + k3) for p, r in zip(w, q)])
         q = q + (k1 + k2 + k2 + k3 + k3 + k4) / 6. # *h is missing or not ?
         return q

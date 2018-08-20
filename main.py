@@ -11,26 +11,29 @@ if __name__ == '__main__':
     from pyquaternion import Quaternion
     # quatern_fault = np.zeros((4,(len(samples._data)+1)))
     quatern_fault = np.zeros((4, len(samples._data)))
-    spinnors = []
-    quatern_fault[:, 0] = [1., 0., 0., 0.]
+    spinnors = np.zeros((4, len(samples._data)))
+    quatspinnors = np.zeros((3, len(samples._data)))
 
+    quatern_fault[:, 0] = [1., 0., 0., 0.]
     h = 0.2
 
-    # for i in range(1,len(samples._data)-1):
-    for i in range(1, len(samples._data)):
+    for i in range(1, 11):
         if i % 100 == 0:
             print('spin ', i)
         quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
                                           quatern_fault[:, i - 1], h)
         my_quaternion = Quaternion(quatern_fault[:, i])
-        log = Quaternion.log(my_quaternion)
-        spinnors.append(log)
-    print(len(spinnors))
-    print(len(samples._data))
+        spinnors[:,i]= Quaternion.log(my_quaternion)
+        quatspinnors[:,i] = spinnors[1:4,i]
+        #spinnors.append(log)
+    print(quatspinnors.shape)
+    print(np.array(samples._data).shape)
+    samples._data = np.hstack((quatspinnors.T,np.array(samples._data)))
+    print((samples._data).shape)
 
     # Downsampling
     breakn = 10
-    new_array = np.zeros((200, 7))
+    new_array = np.zeros((20669, 10))
     for i in range(len(new_array)):
         new_array[i, :] = np.mean(samples._data[i * breakn:(i + 1) * breakn - 1][:], 0)
         # print(new_array)
@@ -94,7 +97,36 @@ if __name__ == '__main__':
         return L
     # for m in range(len(samples._data)):
 
+    def symmetrize(matrix):
+        return matrix + matrix.T
 
+    # TO calculate distances between accelerometer components
+    breakn = 10
+    d = 0
+    ssize = len(samples._data) - breakn
+    finaldistances = np.zeros((ssize * ssize,))  # ((len(samples._data)-2)* (len(samples._data)-2))
+    i = 0
+
+    for m in range(1, ssize + 1):
+        if m % 100 == 0:
+            print('dist ', m)
+        c1 = (samples._data[m - 1:m + breakn - 1, 4:10]).T
+        # print(c1.shape)
+        for n in range(1, ssize + 1):
+            if n < m:
+                c2 = (samples._data[n - 1:n + breakn - 1, 4:10]).T
+                d = geod_dim(c1, c2, 1, 6)
+                finaldistances[i] = d
+            i += 1
+    distanceMatrix = symmetrize(np.reshape((finaldistances), (ssize, ssize)))
+    print(distanceMatrix)
+
+    cl = Clustering(4, distanceMatrix)
+    print(cl.medioids)
+    with open('results.txt', 'w') as f:
+        for p in cl.clusters:
+            f.write(str(p[0]) + ',' + str(p[1]) + '\n')
+    print(cl.clusters)
 
     """
     coeff = scipy.integrate.newton_cotes(len(samples._data))
@@ -138,7 +170,7 @@ if __name__ == '__main__':
 
 
     # to compute the quaternions from the rotation rates obtained from the data  and then take their logarithm
-    # And to calculate the distance between the quaternions
+    # And to calculate the Euclidean distance between the quaternions
 
     from pyquaternion import Quaternion
 
@@ -179,9 +211,8 @@ if __name__ == '__main__':
  """
 
 
-    def symmetrize(matrix):
-        return matrix + matrix.T
 
+"""
     #TO calculate distances between accelerometer components
     breakn = 10
     d = 0
@@ -239,11 +270,8 @@ if __name__ == '__main__':
     finalMatrix=distanceMatrix + quatdistanceMatrix
     print(finalMatrix)
 
+"""
 
-    cl = Clustering(4, finalMatrix)
-    print(cl.medioids)
-    with open('results.txt', 'w') as f:
-        for p in cl.clusters:
-            f.write(str(p[0]) + ',' + str(p[1]) + '\n')
-    print(cl.clusters)
+
+
 

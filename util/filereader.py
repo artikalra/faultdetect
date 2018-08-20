@@ -18,7 +18,13 @@ def parse(filename):
                 ay = float(fields[4])
                 az = float(fields[5])
                 p += 1
+            # elif fields[2] == "SETTINGS":
+            #     sj = float(fields[3])
+            #     sk = float(fields[4])
+            #     sl = float(fields[5])
+            #     sm = float(fields[6])
+            #     p += 1
             if p == 2:
-                samples.insert((t, ox, oy, oz, ax, ay, az))
+                samples.insert((t, ox, oy, oz, ax, ay, az ))
                 p = 0
     return samples
