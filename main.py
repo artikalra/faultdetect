@@ -28,18 +28,35 @@ if __name__ == '__main__':
         #spinnors.append(log)
     print(quatspinnors.shape)
     print(np.array(samples._data).shape)
-    samples._data = np.hstack((quatspinnors.T,np.array(samples._data)))
+    samples._data = np.hstack((np.array(samples._data),quatspinnors.T))
     print((samples._data).shape)
+
+
+
 
     ## Downsampling
     breakn = 10
-    new_array = np.zeros((4000, len(samples._data[0,:])))
+    nominal = np.array([1.0, 1.0, 0.0, 0.0])
+    new_array = np.zeros((20669 , len(samples._data[0,:])))
     for i in range(len(new_array)):
-        new_array[i, :] = np.mean(samples._data[i * breakn:(i + 1) * breakn - 1][:], 0)
-        # print(new_array)
+        new_array[i, :] = np.mean(np.concatenate((samples._data[i * breakn:(i + 1) * breakn - 1][0:7],samples._data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
+        #print(samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11])
+        if nominal in samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11]:
+            #print("no")
+
+            #if samples._data[i * breakn:(i + 1) * breakn - 1][7:11] != nominal:
+            if nominal not in samples._data[i * breakn:(i + 1) * breakn - 1 ,7:11] :
+                #print("nono")
+                new_array[i, 7:11] = np.array([2, 2, 2, 2])
+            new_array[i, 7:11] = np.array([0, 0, 0, 0])
+        else:
+            #print("yes")
+            new_array[i, 7:11] = np.array([1, 1, 1, 1])
+
     samples._data = new_array
+    #print(samples._data[i])
     print("downsampling done")
-    print(len(samples._data))
+    print(np.array(samples._data).shape)
 
 
 #function to calculate the geodesic distance between two curves
