@@ -1,6 +1,10 @@
 import util.filereader as rd
 import math
 import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+
+
 
 from data.cluster import Clustering
 
@@ -26,35 +30,33 @@ if __name__ == '__main__':
         spinnors[:,i]= Quaternion.log(my_quaternion)
         quatspinnors[:,i] = spinnors[1:4,i]
         #spinnors.append(log)
-    print(quatspinnors.shape)
-    print(np.array(samples._data).shape)
+    #print(quatspinnors.shape)
+    #print(np.array(samples._data).shape)
     samples._data = np.hstack((np.array(samples._data),quatspinnors.T))
     print((samples._data).shape)
-
-
 
 
     ## Downsampling
     breakn = 10
     nominal = np.array([1.0, 1.0, 0.0, 0.0])
-    new_array = np.zeros((20669 , len(samples._data[0,:])))
+    new_array = np.zeros((100 , len(samples._data[0,:])))
     for i in range(len(new_array)):
         new_array[i, :] = np.mean(np.concatenate((samples._data[i * breakn:(i + 1) * breakn - 1][0:7],samples._data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
-        #print(samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11])
+        #print(nominal in samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11])
+        #print(np.array(samples._data[i * breakn:(i + 1) * breakn - 1, 7:11]) != nominal)
         if nominal in samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11]:
             #print("no")
-
             #if samples._data[i * breakn:(i + 1) * breakn - 1][7:11] != nominal:
-            if nominal not in samples._data[i * breakn:(i + 1) * breakn - 1 ,7:11] :
+            if  np.any(samples._data[i * breakn:(i + 1) * breakn - 1 ,7:11] != nominal):
                 #print("nono")
-                new_array[i, 7:11] = np.array([2, 2, 2, 2])
-            new_array[i, 7:11] = np.array([0, 0, 0, 0])
+                new_array[i, 7:11] = np.array([2, 2, 2, 2]) # The transition case T=2 (where we have both nominal and faulty cases)
+            new_array[i, 7:11] = np.array([0, 0, 0, 0]) #Nominal Case N=0
         else:
             #print("yes")
-            new_array[i, 7:11] = np.array([1, 1, 1, 1])
+            new_array[i, 7:11] = np.array([1, 1, 1, 1]) # Faulty Case F=1
 
     samples._data = new_array
-    #print(samples._data[i])
+    #print(samples._data)
     print("downsampling done")
     print(np.array(samples._data).shape)
 
@@ -145,6 +147,11 @@ if __name__ == '__main__':
         for p in cl.clusters:
             f.write(str(p[0]) + ',' + str(p[1]) + '\n')
     print(cl.clusters)
+
+
+    plt.matshow(distanceMatrix, cmap=plt.cm.gray)
+    plt.legend()
+    plt.show()
 
     """
     coeff = scipy.integrate.newton_cotes(len(samples._data))
@@ -251,6 +258,8 @@ if __name__ == '__main__':
             i += 1
     distanceMatrix = symmetrize(np.reshape((finaldistances), (ssize, ssize)))
     print(distanceMatrix)
+    
+
 
     # TO calculate distances between spinnors
     from pyquaternion import Quaternion
@@ -270,6 +279,8 @@ if __name__ == '__main__':
                                           (quatern_fault[:, i - 1]), h)
         quat = Quaternion(quatern_fault[:, i])
         spinnors[:,i]= Quaternion.log(quat)
+        print(spinnors)
+
 
 
     for i in range(1, ssize + 1):
