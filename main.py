@@ -3,8 +3,7 @@ import math
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-
-
+import pickle
 
 from data.cluster import Clustering
 
@@ -39,7 +38,7 @@ if __name__ == '__main__':
     ## Downsampling
     breakn = 10
     nominal = np.array([1.0, 1.0, 0.0, 0.0])
-    new_array = np.zeros((100 , len(samples._data[0,:])))
+    new_array = np.zeros((1000 , len(samples._data[0,:])))
     for i in range(len(new_array)):
         new_array[i, :] = np.mean(np.concatenate((samples._data[i * breakn:(i + 1) * breakn - 1][0:7],samples._data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
         #print(nominal in samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11])
@@ -166,7 +165,8 @@ if __name__ == '__main__':
                 finaldistances[i] = d
             i += 1
     distanceMatrix = symmetrize(np.reshape((finaldistances), (ssize, ssize)))
-    print(distanceMatrix)
+    #print(distanceMatrix)
+
 
     cl = Clustering(4, distanceMatrix)
     print(cl.medioids)
@@ -176,27 +176,49 @@ if __name__ == '__main__':
     print(cl.clusters)
 
 
+# To plot the pixel graph
 
+    pickle.dump(distanceMatrix, open("save.p", "wb"))
+    distance_matrix = pickle.load(open("save.p", "rb"))
+    diff=distanceMatrix-distance_matrix
+    print("difference of the matrices:" , diff)
+    plt.matshow(distance_matrix, cmap=plt.cm.gray)
+    plt.legend()
+    plt.show()
+
+    # To plot the results directly using the text file
+    filename = './results.txt'
+    R = []
+    with open(filename, 'r') as f:
+        i = 0
+        for line in f:
+            field = line.split(',')
+            t = int(field[0])
+            c = int(field[1])
+            R.append((t, c))
+            i += 1
+    Rn = np.array(R)
+
+    figure = plt.figure()
+    plt.plot(Rn[:, 0], Rn[:, 1], "o")
+    plt.show()
+
+"""
+# to plot using the clusters
     x = np.zeros((1, len(cl.clusters)))
     y = np.zeros((1, len(cl.clusters)))
     for i in range(len(cl.clusters)):
         x[:,i] =(cl.clusters)[i][0]
-    print(x)
+    #print(x)
 
     for j in range(len(cl.clusters)):
         y[:, j] = (cl.clusters)[j][1]
-    print(y)
-
-    plt.matshow(distanceMatrix, cmap=plt.cm.gray)
-    plt.legend()
-    plt.show()
-
-
+    #print(y)
 
     plt.plot(x, y, 'ro')
-    plt.axis([0, 2200, 0, 5])
+    plt.axis([0, 100, 0, 5])
     plt.show()
-    """
+
     
     coeff = scipy.integrate.newton_cotes(len(samples._data))
     print(coeff)
@@ -215,8 +237,7 @@ if __name__ == '__main__':
         return x ** 3 - 4 * x + 9
 
     print(integrate(func, -7.0, 7.0))
-    """
-    """
+    
     # to compute to integration of the square of L2norm for all the trajectories
     breakn = 10
     d = 0
