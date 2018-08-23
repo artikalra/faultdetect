@@ -38,7 +38,7 @@ if __name__ == '__main__':
     ## Downsampling
     breakn = 10
     nominal = np.array([1.0, 1.0, 0.0, 0.0])
-    new_array = np.zeros((100 , len(samples._data[0,:])))
+    new_array = np.zeros((20669, len(samples._data[0,:])))
     for i in range(len(new_array)):
         new_array[i, :] = np.mean(np.concatenate((samples._data[i * breakn:(i + 1) * breakn - 1][0:7],samples._data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
         #print(nominal in samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11])
@@ -143,29 +143,7 @@ if __name__ == '__main__':
         distanceMatrix = symmetrize((finaldistances))
         return distanceMatrix
 
-    print(distance(samples._data, 41, 89))
-
-    # TO calculate distances between accelerometer and quaternion functions components
-    breakn = 10
-    d = 0
-    ssize = len(samples._data) - breakn
-    finaldistances = np.zeros((ssize * ssize,))  # ((len(samples._data)-2)* (len(samples._data)-2))
-    i = 0
-
-    for m in range(1, ssize + 1):
-        if m % 100 == 0:
-            print('dist ', m)
-
-        c1 = np.concatenate(((samples._data[m - 1:m + breakn - 1, 4:7]).T,(samples._data[m - 1:m + breakn - 1, 11:14]).T))
-        #print(c1.shape)
-        for n in range(1, ssize + 1):
-            if n < m:
-                c2 = np.concatenate(((samples._data[n - 1:n + breakn - 1, 4:7]).T,(samples._data[n - 1:n + breakn - 1, 11:14]).T))
-                d = geod_dim(c1, c2, 1, 6)
-                finaldistances[i] = d
-            i += 1
-    distanceMatrix = symmetrize(np.reshape((finaldistances), (ssize, ssize)))
-    #print(distanceMatrix)
+    distanceMatrix = distance((samples._data), 1, (len(samples._data)+1-breakn))
 
 
     cl = Clustering(4, distanceMatrix)
@@ -180,7 +158,7 @@ if __name__ == '__main__':
 
     pickle.dump(distanceMatrix, open("save.p", "wb"))
     distance_matrix = pickle.load(open("save.p", "rb"))
-    diff=distanceMatrix-distance_matrix
+    diff = distanceMatrix - distance_matrix
     print("difference of the matrices:" , diff)
     print(distance_matrix)
     plt.matshow(distance_matrix, cmap=plt.cm.gray)
@@ -203,6 +181,30 @@ if __name__ == '__main__':
     figure = plt.figure()
     plt.plot(Rn[:, 0], Rn[:, 1], "o")
     plt.show()
+
+    """
+        # TO calculate distances between accelerometer and quaternion functions components
+        breakn = 10
+        d = 0
+        ssize = len(samples._data) - breakn
+        finaldistances = np.zeros((ssize * ssize,))  # ((len(samples._data)-2)* (len(samples._data)-2))
+        i = 0
+
+        for m in range(1, ssize + 1):
+            if m % 100 == 0:
+                print('dist ', m)
+
+            c1 = np.concatenate(((samples._data[m - 1:m + breakn - 1, 4:7]).T,(samples._data[m - 1:m + breakn - 1, 11:14]).T))
+            #print(c1.shape)
+            for n in range(1, ssize + 1):
+                if n < m:
+                    c2 = np.concatenate(((samples._data[n - 1:n + breakn - 1, 4:7]).T,(samples._data[n - 1:n + breakn - 1, 11:14]).T))
+                    d = geod_dim(c1, c2, 1, 6)
+                    finaldistances[i] = d
+                i += 1
+        distanceMatrix = symmetrize(np.reshape((finaldistances), (ssize, ssize)))
+        #print(distanceMatrix)
+    """
 
 """
 # to plot using the clusters
