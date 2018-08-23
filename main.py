@@ -38,7 +38,7 @@ if __name__ == '__main__':
     ## Downsampling
     breakn = 10
     nominal = np.array([1.0, 1.0, 0.0, 0.0])
-    new_array = np.zeros((1000 , len(samples._data[0,:])))
+    new_array = np.zeros((100 , len(samples._data[0,:])))
     for i in range(len(new_array)):
         new_array[i, :] = np.mean(np.concatenate((samples._data[i * breakn:(i + 1) * breakn - 1][0:7],samples._data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
         #print(nominal in samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11])
@@ -119,14 +119,14 @@ if __name__ == '__main__':
         return matrix + matrix.T
 
 
-    def distance(data):
+    def distance(data, start, stop):
         breakn = 10
         d = 0
         ssize = len(data) - breakn
-        finaldistances = np.zeros((ssize * ssize,))  # ((len(samples._data)-2)* (len(samples._data)-2))
+        finaldistances = np.zeros((ssize , ssize))  # ((len(samples._data)-2)* (len(samples._data)-2))
         i = 0
 
-        for m in range(1, ssize + 1):
+        for m in range(start, stop):
             if m % 100 == 0:
                 print('dist ', m)
 
@@ -138,14 +138,14 @@ if __name__ == '__main__':
                     c2 = np.concatenate(
                         ((data[n - 1:n + breakn - 1, 4:7]).T, (data[n - 1:n + breakn - 1, 11:14]).T))
                     d = geod_dim(c1, c2, 1, 6)
-                    finaldistances[i] = d
+                    finaldistances[m-1][n-1] = d
                 i += 1
-        distanceMatrix = symmetrize(np.reshape((finaldistances), (ssize, ssize)))
+        distanceMatrix = symmetrize((finaldistances))
         return distanceMatrix
 
-    print(distance(samples._data))
+    print(distance(samples._data, 41, 89))
 
-    # TO calculate distances between accelerometer components
+    # TO calculate distances between accelerometer and quaternion functions components
     breakn = 10
     d = 0
     ssize = len(samples._data) - breakn
@@ -182,6 +182,7 @@ if __name__ == '__main__':
     distance_matrix = pickle.load(open("save.p", "rb"))
     diff=distanceMatrix-distance_matrix
     print("difference of the matrices:" , diff)
+    print(distance_matrix)
     plt.matshow(distance_matrix, cmap=plt.cm.gray)
     plt.legend()
     plt.show()
