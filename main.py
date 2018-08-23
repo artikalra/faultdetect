@@ -149,11 +149,28 @@ if __name__ == '__main__':
     print(cl.clusters)
 
 
+
+    x = np.zeros((1, len(cl.clusters)))
+    y = np.zeros((1, len(cl.clusters)))
+    for i in range(len(cl.clusters)):
+        x[:,i] =(cl.clusters)[i][0]
+    print(x)
+
+    for j in range(len(cl.clusters)):
+        y[:, j] = (cl.clusters)[j][1]
+    print(y)
+
     plt.matshow(distanceMatrix, cmap=plt.cm.gray)
     plt.legend()
     plt.show()
 
+
+
+    plt.plot(x, y, 'ro')
+    plt.axis([0, 2200, 0, 5])
+    plt.show()
     """
+    
     coeff = scipy.integrate.newton_cotes(len(samples._data))
     print(coeff)
 
