@@ -119,6 +119,33 @@ if __name__ == '__main__':
     def symmetrize(matrix):
         return matrix + matrix.T
 
+
+    def distance(data):
+        breakn = 10
+        d = 0
+        ssize = len(data) - breakn
+        finaldistances = np.zeros((ssize * ssize,))  # ((len(samples._data)-2)* (len(samples._data)-2))
+        i = 0
+
+        for m in range(1, ssize + 1):
+            if m % 100 == 0:
+                print('dist ', m)
+
+            c1 = np.concatenate(
+                ((data[m - 1:m + breakn - 1, 4:7]).T, (data[m - 1:m + breakn - 1, 11:14]).T))
+            # print(c1.shape)
+            for n in range(1, ssize + 1):
+                if n < m:
+                    c2 = np.concatenate(
+                        ((data[n - 1:n + breakn - 1, 4:7]).T, (data[n - 1:n + breakn - 1, 11:14]).T))
+                    d = geod_dim(c1, c2, 1, 6)
+                    finaldistances[i] = d
+                i += 1
+        distanceMatrix = symmetrize(np.reshape((finaldistances), (ssize, ssize)))
+        return distanceMatrix
+
+    print(distance(samples._data))
+
     # TO calculate distances between accelerometer components
     breakn = 10
     d = 0
