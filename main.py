@@ -1,5 +1,5 @@
 import util.filereader as rd
-import math
+import math, time
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -7,7 +7,120 @@ import pickle
 
 from data.cluster import Clustering
 
+from multiprocessing import Process, JoinableQueue
+import threading 
+import os
+
+def info(title):
+    print(title)
+    print('module name:', __name__)
+    if hasattr(os, 'getppid'):  # only available on Unix
+        print('parent process:', os.getppid())
+    print('process id:', os.getpid())
+
+
+class SummingThread(threading.Thread):
+    def __init__(self,data,start_indx,stop_indx):
+        super(SummingThread, self).__init__()
+        self.data = data
+        self.start_indx=start_indx
+        self.stop_indx=stop_indx
+        self.total=0
+
+    def run(self):
+        # for i in range(self.start_indx,self.stop_indx):
+        #     self.total+=i
+        self._distance(self.data, self.start_indx, self.stop_indx)
+
+    def _distance(self, data, start_indx, stop_indx):
+        breakn = 10
+        d = 0
+        ssize = len(data) - breakn
+        finaldistances = np.zeros((ssize , ssize))  # ((len(samples._data)-2)* (len(samples._data)-2))
+        i = 0
+
+        for m in range(start_indx, stop_indx):
+            if m % 100 == 0:
+                print('dist ', m)
+
+            c1 = np.concatenate(
+                ((data[m - 1:m + breakn - 1, 4:7]).T, (data[m - 1:m + breakn - 1, 11:14]).T))
+            # print(c1.shape)
+            for n in range(1, ssize + 1):
+                if n < m:
+                    c2 = np.concatenate(
+                        ((data[n - 1:n + breakn - 1, 4:7]).T, (data[n - 1:n + breakn - 1, 11:14]).T))
+                    d = geod_dim(c1, c2, 1, 6)
+                    finaldistances[m-1][n-1] = d
+                i += 1
+        self.distance_matrix = finaldistances
+        
+def Factorizer(data, nprocs):
+    def Process_distance( data, start_indx, stop_indx, out_q):
+        breakn = 10
+        d = 0
+        ssize = len(data) - breakn
+        finaldistances = np.zeros((ssize , ssize), dtype=float)  # ((len(samples._data)-2)* (len(samples._data)-2))
+        i = 0
+
+        for m in range(start_indx, stop_indx):
+            if m % 10 == 0:
+                print('dist ', m)
+
+            c1 = np.concatenate(
+                ((data[(m-1):(m+breakn-1), 4:7]).T, (data[(m-1):(m+breakn-1), 11:14]).T))
+            # print(c1.shape)
+            for n in range(1, ssize + 1):
+                if n < m:
+                    c2 = np.concatenate(
+                        ((data[n - 1:n + breakn - 1, 4:7]).T, (data[n - 1:n + breakn - 1, 11:14]).T))
+                    d = geod_dim(c1, c2, 1, 6)
+                    print(d)
+                    finaldistances[m-1][n-1] = d
+                i += 1
+        out_q.put(finaldistances)
+
+    ssize = len(data) - 10 #breakn
+    nr_elements = 1000 #int(ssize/nr_threads)
+    procs_list = []
+    distanceMatrix = np.zeros((ssize, ssize), dtype=float)
+
+    # start_time = time.time()
+
+    # Distribute the job to threads
+    out_q = JoinableQueue()
+
+    for i in range(nprocs):
+        p = Process(target=Process_distance,
+                args=(data, (i*nr_elements), (i+1)*nr_elements, out_q) )
+        procs_list.append(p)
+        p.start()
+
+    print('Here I am !')
+    # for i in range(nprocs-1):
+    #     # if Queue.Empty :
+    #     #     print('out_q is empty !')
+    #     distanceMatrix += out_q.get()
+
+    print('Here I am to join !')
+    for p in procs_list:
+        p.join()
+
+    print('Here I am to get() !')
+    # for i in range(nprocs-1):
+    #     # if Queue.Empty :
+    #     #     print('out_q is empty !')
+    #     distanceMatrix += out_q.get()
+    while out_q.empty() == False:
+        d = out_q.get(True)
+        print(d)
+
+    return distanceMatrix
+
+
+
 if __name__ == '__main__':
+    # info('main line')
     samples = rd.parse("data/17_07_06__10_21_07_SD.data")
 
     #Calculation of spinnors
@@ -34,6 +147,9 @@ if __name__ == '__main__':
     samples._data = np.hstack((np.array(samples._data),quatspinnors.T))
     print((samples._data).shape)
 
+    # import pandas as pd 
+    # df = pd.DataFrame(np_array)
+    # df.to_csv("file_path.csv", header=None)
 
     ## Downsampling
     breakn = 10
@@ -119,35 +235,94 @@ if __name__ == '__main__':
         return matrix + matrix.T
 
 
-    def distance(data, start, stop):
-        breakn = 10
-        d = 0
-        ssize = len(data) - breakn
-        finaldistances = np.zeros((ssize , ssize))  # ((len(samples._data)-2)* (len(samples._data)-2))
-        i = 0
+    # def distance(data, start, stop):
+    #     breakn = 10
+    #     d = 0
+    #     ssize = len(data) - breakn
+    #     finaldistances = np.zeros((ssize , ssize))  # ((len(samples._data)-2)* (len(samples._data)-2))
+    #     i = 0
 
-        for m in range(start, stop):
-            if m % 100 == 0:
-                print('dist ', m)
+    #     for m in range(start, stop):
+    #         if m % 100 == 0:
+    #             print('dist ', m)
 
-            c1 = np.concatenate(
-                ((data[m - 1:m + breakn - 1, 4:7]).T, (data[m - 1:m + breakn - 1, 11:14]).T))
-            # print(c1.shape)
-            for n in range(1, ssize + 1):
-                if n < m:
-                    c2 = np.concatenate(
-                        ((data[n - 1:n + breakn - 1, 4:7]).T, (data[n - 1:n + breakn - 1, 11:14]).T))
-                    d = geod_dim(c1, c2, 1, 6)
-                    finaldistances[m-1][n-1] = d
-                i += 1
-        distanceMatrix = symmetrize((finaldistances))
-        return distanceMatrix
+    #         c1 = np.concatenate(
+    #             ((data[m - 1:m + breakn - 1, 4:7]).T, (data[m - 1:m + breakn - 1, 11:14]).T))
+    #         # print(c1.shape)
+    #         for n in range(1, ssize + 1):
+    #             if n < m:
+    #                 c2 = np.concatenate(
+    #                     ((data[n - 1:n + breakn - 1, 4:7]).T, (data[n - 1:n + breakn - 1, 11:14]).T))
+    #                 d = geod_dim(c1, c2, 1, 6)
+    #                 finaldistances[m-1][n-1] = d
+    #             i += 1
+    #     distanceMatrix = symmetrize((finaldistances))
+    #     return distanceMatrix
 
-    distanceMatrix = distance((samples._data), 1, (len(samples._data)+1-breakn))
+    #distanceMatrix = distance((samples._data), 1, (len(samples._data)+1-breakn))
+    data = samples._data
+    # ssize = len(data) - 10 #breakn
+    # dsize = len(data)
+    # nr_procs = 3
+    # nr_elements = 22 #int(ssize/nr_threads)
+    # procs_list = []
+    # queue_list = []
+    # distanceMatrix = np.zeros((ssize, ssize), dtype=float)
 
+    # start_time = time.time()
+    # # Distribute the job to threads
 
+    # out_q = Queue()
+
+    # for i in range(nr_procs):
+    #     # th = SummingThread(data, (i*nr_elements)-nr_elements, i*nr_elements)
+
+    #     p = Process(target=Process_distance, args=(data, (i*nr_elements), (i+1)*nr_elements, out_q) )
+    #     procs_list.append(p)
+    #     p.start()
+
+    # # # Addint the last bit of the data
+    # # th = SummingThread(data, nr_elements*nr_threads, ssize)
+    # # thread_list.append(th)
+
+    # for i in range(nr_procs):
+    #     print(out_q.get())
+
+    # for p in procs_list:
+    #     p.join()
+
+    # # for thread in thread_list:
+    # #     distanceMatrix += thread.finaldistances #thread.distance_matrix
+    # # i = 0
+    # # for q in queue_list:
+    # #     distanceMatrix += q.get()
+    # #     print(i, q.get())
+    # #     i += 1
+
+    # distanceMatrix = symmetrize(distanceMatrix)
+
+    # th1 = SummingThread(data, 0, 100)
+    # print('Created the thread 1')
+    # th1.start()
+
+    # th1.join()
+    start_time = time.time()
+    # print('Here is the 1st thread : ',th1.distance_matrix)
+    distanceMatrix = Factorizer(data, 4)
+    duration = time.time()-start_time
+    print('Duration : ', duration)
+    print('Here I am ! 2 ')
     cl = Clustering(4, distanceMatrix)
-    print(cl.medioids)
+    # print(cl.medioids)
+    print(distanceMatrix)
+
+    # A = np.array(distanceMatrix)
+    # with open(r"dist_mat.pkl", "wb") as output_file:
+    #     pickle.dump(distanceMatrix, output_file)
+
+    with open("distancematrix.txt", 'wb') as f:
+        np.save(f, distanceMatrix)
+
     with open('results.txt', 'w') as f:
         for p in cl.clusters:
             f.write(str(p[0]) + ',' + str(p[1]) + '\n')
@@ -156,12 +331,14 @@ if __name__ == '__main__':
 
 # To plot the pixel graph
 
-    pickle.dump(distanceMatrix, open("save.p", "wb"))
-    distance_matrix = pickle.load(open("save.p", "rb"))
-    diff = distanceMatrix - distance_matrix
-    print("difference of the matrices:" , diff)
-    print(distance_matrix)
-    plt.matshow(distance_matrix, cmap=plt.cm.gray)
+    # pickle.dump(distanceMatrix, open("save.p", "wb"))
+
+    # distance_matrix = pickle.load(open("save.p", "rb"))
+    # diff = distanceMatrix - distance_matrix
+    # print("difference of the matrices:" , diff)
+    # print(distance_matrix)
+    plt.figure()
+    plt.matshow(distanceMatrix, cmap=plt.cm.gray)
     plt.legend()
     plt.show()
 
@@ -368,7 +545,15 @@ if __name__ == '__main__':
     print(finalMatrix)
 
 """
-
+# def get_timed_interruptable(q, timeout):
+#     stoploop = time.monotonic() + timeout - 1
+#     while time.monotonic() < stoploop:
+#         try:
+#             return q.get(timeout=1)  # Allow check for Ctrl-C every second
+#         except queue.Empty:
+#             pass
+#     # Final wait for last fraction of a second
+#     return q.get(timeout=max(0, stoploop + 1 - time.monotonic())) 
 
 
 
