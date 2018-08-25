@@ -133,7 +133,7 @@ if __name__ == '__main__':
     quatern_fault[:, 0] = [1., 0., 0., 0.]
     h = 0.2
 
-    for i in range(1, 11):
+    for i in range(1, (len(samples._data))):
         if i % 100 == 0:
             print('spin ', i)
         quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
@@ -141,11 +141,9 @@ if __name__ == '__main__':
         my_quaternion = Quaternion(quatern_fault[:, i])
         spinnors[:,i]= Quaternion.log(my_quaternion)
         quatspinnors[:,i] = spinnors[1:4,i]
-        #spinnors.append(log)
-    #print(quatspinnors.shape)
-    #print(np.array(samples._data).shape)
     samples._data = np.hstack((np.array(samples._data),quatspinnors.T))
     print((samples._data).shape)
+    print(samples._data)
 
     # import pandas as pd 
     # df = pd.DataFrame(np_array)
@@ -154,7 +152,7 @@ if __name__ == '__main__':
     ## Downsampling
     breakn = 10
     nominal = np.array([1.0, 1.0, 0.0, 0.0])
-    new_array = np.zeros((20669, len(samples._data[0,:])))
+    new_array = np.zeros((100, len(samples._data[0,:])))
     for i in range(len(new_array)):
         new_array[i, :] = np.mean(np.concatenate((samples._data[i * breakn:(i + 1) * breakn - 1][0:7],samples._data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
         #print(nominal in samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11])
