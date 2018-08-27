@@ -5,6 +5,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pickle
 
+import pandas as pd
+
 from data.cluster import Clustering
 
 from multiprocessing import Process, JoinableQueue
@@ -64,7 +66,7 @@ def Factorizer(data, nprocs):
         i = 0
 
         for m in range(start_indx, stop_indx):
-            if m % 10 == 0:
+            if m % 100 == 0:
                 print('dist ', m)
 
             c1 = np.concatenate(
@@ -76,12 +78,12 @@ def Factorizer(data, nprocs):
                         ((data[n - 1:n + breakn - 1, 4:7]).T, (data[n - 1:n + breakn - 1, 11:14]).T))
                     d = geod_dim(c1, c2, 1, 6)
                     print(d)
-                    finaldistances[m-1][n-1] = d
+                    finaldistances[m-1,n-1] = d
                 i += 1
         out_q.put(finaldistances)
 
     ssize = len(data) - 10 #breakn
-    nr_elements = 1000 #int(ssize/nr_threads)
+    nr_elements = int(ssize/nprocs)
     procs_list = []
     distanceMatrix = np.zeros((ssize, ssize), dtype=float)
 
@@ -96,7 +98,7 @@ def Factorizer(data, nprocs):
         procs_list.append(p)
         p.start()
 
-    print('Here I am !')
+    # print('Here I am !')
     # for i in range(nprocs-1):
     #     # if Queue.Empty :
     #     #     print('out_q is empty !')
@@ -111,9 +113,11 @@ def Factorizer(data, nprocs):
     #     # if Queue.Empty :
     #     #     print('out_q is empty !')
     #     distanceMatrix += out_q.get()
+    i =0
     while out_q.empty() == False:
-        d = out_q.get(True)
-        print(d)
+        distanceMatrix += out_q.get(True) #False works with 300 data...
+        print(i, distanceMatrix)
+        i += 1
 
     return distanceMatrix
 
@@ -121,46 +125,54 @@ def Factorizer(data, nprocs):
 
 if __name__ == '__main__':
     # info('main line')
-    samples = rd.parse("data/17_07_06__10_21_07_SD.data")
+    fname = "17_07_06__10_21_07_SD_small.csv"
+    if os.path.isfile(fname):
+        df = pd.read_csv(fname)
+        data = df.values #df.reset_index().values
 
-    #Calculation of spinnors
-    from pyquaternion import Quaternion
-    # quatern_fault = np.zeros((4,(len(samples._data)+1)))
-    quatern_fault = np.zeros((4, len(samples._data)))
-    spinnors = np.zeros((4, len(samples._data)))
-    quatspinnors = np.zeros((3, len(samples._data)))
+    else:
+        samples = rd.parse("data/17_07_06__10_21_07_SD.data")
 
-    quatern_fault[:, 0] = [1., 0., 0., 0.]
-    h = 0.2
+        #Calculation of spinnors
+        from pyquaternion import Quaternion
+        # quatern_fault = np.zeros((4,(len(samples._data)+1)))
+        quatern_fault = np.zeros((4, len(samples._data)))
+        # spinnors = np.zeros((4, len(samples._data)))
+        quatspinnors = np.zeros((3, len(samples._data)))
 
-    for i in range(1, (len(samples._data))):
-        if i % 100 == 0:
-            print('spin ', i)
-        quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
-                                          quatern_fault[:, i - 1], h)
-        my_quaternion = Quaternion(quatern_fault[:, i])
-        spinnors[:,i]= Quaternion.log(my_quaternion)
-        quatspinnors[:,i] = spinnors[1:4,i]
-    samples._data = np.hstack((np.array(samples._data),quatspinnors.T))
-    print((samples._data).shape)
-    print(samples._data)
+        quatern_fault[:, 0] = [1., 0., 0., 0.]
+        h = 0.16667 # 60Hz 
 
-    # import pandas as pd 
-    # df = pd.DataFrame(np_array)
-    # df.to_csv("file_path.csv", header=None)
+        for i in range(1, (len(samples._data))):
+            if i % 100 == 0:
+                print('spin ', i)
+            quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
+                                              quatern_fault[:, i - 1], h)
+            my_quaternion = Quaternion(quatern_fault[:, i])
+            # spinnors[:,i]= Quaternion.log(my_quaternion)
+            # quatspinnors[:,i] = spinnors[1:4,i]
+            quatspinnors[:,i] = Quaternion.log(my_quaternion).elements[1:4]
+        data = np.hstack((np.array(samples._data),quatspinnors.T))
+        #print((samples._data).shape)
+        #print(samples._data)
+
+        # Record the processed data into csv for faster next run
+        df = pd.DataFrame(data, columns=['time', 'G1', 'G2', 'G3', 'A1', 'A2', 'A3', 'F1', 'F2', 'F3', 'F4', 'S1', 'S2', 'S3'])
+        df.to_csv("17_07_06__10_21_07_SD.csv", index=None)
+
 
     ## Downsampling
     breakn = 10
     nominal = np.array([1.0, 1.0, 0.0, 0.0])
-    new_array = np.zeros((100, len(samples._data[0,:])))
+    new_array = np.zeros((int(len(data)/10), len(data[0,:]))) #20669
     for i in range(len(new_array)):
-        new_array[i, :] = np.mean(np.concatenate((samples._data[i * breakn:(i + 1) * breakn - 1][0:7],samples._data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
-        #print(nominal in samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11])
-        #print(np.array(samples._data[i * breakn:(i + 1) * breakn - 1, 7:11]) != nominal)
-        if nominal in samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11]:
+        new_array[i, :] = np.mean(np.concatenate((data[i * breakn:(i + 1) * breakn - 1][0:7],data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
+        #print(nominal in data[i * breakn:(i + 1) * breakn - 1 , 7:11])
+        #print(np.array(data[i * breakn:(i + 1) * breakn - 1, 7:11]) != nominal)
+        if nominal in data[i * breakn:(i + 1) * breakn - 1 , 7:11]:
             #print("no")
-            #if samples._data[i * breakn:(i + 1) * breakn - 1][7:11] != nominal:
-            if  np.any(samples._data[i * breakn:(i + 1) * breakn - 1 ,7:11] != nominal):
+            #if data[i * breakn:(i + 1) * breakn - 1][7:11] != nominal:
+            if  np.any(data[i * breakn:(i + 1) * breakn - 1 ,7:11] != nominal):
                 #print("nono")
                 new_array[i, 7:11] = np.array([2, 2, 2, 2]) # The transition case T=2 (where we have both nominal and faulty cases)
             new_array[i, 7:11] = np.array([0, 0, 0, 0]) #Nominal Case N=0
@@ -168,10 +180,14 @@ if __name__ == '__main__':
             #print("yes")
             new_array[i, 7:11] = np.array([1, 1, 1, 1]) # Faulty Case F=1
 
-    samples._data = new_array
-    #print(samples._data)
+    data = new_array
+
+    # Record the downsampled data into csv for faster next run as well
+    df = pd.DataFrame(data)
+    df.to_csv("17_07_06__10_21_07_SD_small_ds.csv", header=None)
+    #print(data)
     print("downsampling done")
-    print(np.array(samples._data).shape)
+    print(np.array(data).shape)
 
 
 #function to calculate the geodesic distance between two curves
@@ -258,7 +274,9 @@ if __name__ == '__main__':
     #     return distanceMatrix
 
     #distanceMatrix = distance((samples._data), 1, (len(samples._data)+1-breakn))
-    data = samples._data
+    
+    #data = samples._data
+    
     # ssize = len(data) - 10 #breakn
     # dsize = len(data)
     # nr_procs = 3
@@ -307,6 +325,7 @@ if __name__ == '__main__':
     start_time = time.time()
     # print('Here is the 1st thread : ',th1.distance_matrix)
     distanceMatrix = Factorizer(data, 4)
+    distanceMatrix = symmetrize(distanceMatrix)
     duration = time.time()-start_time
     print('Duration : ', duration)
     print('Here I am ! 2 ')
@@ -321,7 +340,7 @@ if __name__ == '__main__':
     with open("distancematrix.txt", 'wb') as f:
         np.save(f, distanceMatrix)
 
-    with open('results.txt', 'w') as f:
+    with open('clustered.txt', 'w') as f:
         for p in cl.clusters:
             f.write(str(p[0]) + ',' + str(p[1]) + '\n')
     print(cl.clusters)
