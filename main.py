@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import pickle
 
 import pandas as pd
+import tempfile
 
 from data.cluster import Clustering
 
@@ -71,19 +72,23 @@ def Factorizer(data, nprocs):
 
             c1 = np.concatenate(
                 ((data[(m-1):(m+breakn-1), 4:7]).T, (data[(m-1):(m+breakn-1), 11:14]).T))
-            # print(c1.shape)
             for n in range(1, ssize + 1):
                 if n < m:
                     c2 = np.concatenate(
                         ((data[n - 1:n + breakn - 1, 4:7]).T, (data[n - 1:n + breakn - 1, 11:14]).T))
                     d = geod_dim(c1, c2, 1, 6)
-                    print(d)
+                    # print(d)
                     finaldistances[m-1,n-1] = d
                 i += 1
-        out_q.put(finaldistances)
+        # print(finaldistances)
+        # Random file generator of python
+        tf = tempfile.NamedTemporaryFile(prefix='tmp_', dir='./', delete=False)
+        with open(tf.name, 'wb') as f:
+            np.save(f, finaldistances)
+        # out_q.put(finaldistance)
 
     ssize = len(data) - 10 #breakn
-    nr_elements = int(ssize/nprocs)
+    nr_elements = int(ssize/(nprocs-1))
     procs_list = []
     distanceMatrix = np.zeros((ssize, ssize), dtype=float)
 
@@ -91,33 +96,37 @@ def Factorizer(data, nprocs):
 
     # Distribute the job to threads
     out_q = JoinableQueue()
-
-    for i in range(nprocs):
+    # for rep in range(1):
+    for i in range(nprocs-1):
         p = Process(target=Process_distance,
                 args=(data, (i*nr_elements), (i+1)*nr_elements, out_q) )
         procs_list.append(p)
         p.start()
+        print(p.is_alive())
 
-    # print('Here I am !')
-    # for i in range(nprocs-1):
-    #     # if Queue.Empty :
-    #     #     print('out_q is empty !')
-    #     distanceMatrix += out_q.get()
+    p = Process(target=Process_distance,
+                args=(data, ((nprocs-1)*nr_elements), ssize, out_q) )
+    procs_list.append(p)
+    p.start()
 
+    print(procs_list)
     print('Here I am to join !')
     for p in procs_list:
         p.join()
+        print(p.is_alive())
+        
+        # if not any(p.is_alive() for p in r) and out_queue.empty():
 
-    print('Here I am to get() !')
-    # for i in range(nprocs-1):
-    #     # if Queue.Empty :
-    #     #     print('out_q is empty !')
-    #     distanceMatrix += out_q.get()
-    i =0
-    while out_q.empty() == False:
-        distanceMatrix += out_q.get(True) #False works with 300 data...
-        print(i, distanceMatrix)
-        i += 1
+        # print('Here I am to get() !')
+        # i =0
+        # while out_q.empty() == False:
+        #     distanceMatrix += out_q.get() #False works with 300 data...
+        #     print(i, distanceMatrix)
+        #     i += 1
+        # # for p in procs_list:
+        # #     p.()
+        # proc_list = []
+        # print(procs_list)
 
     return distanceMatrix
 
@@ -324,7 +333,9 @@ if __name__ == '__main__':
     # th1.join()
     start_time = time.time()
     # print('Here is the 1st thread : ',th1.distance_matrix)
-    distanceMatrix = Factorizer(data, 4)
+    # distanceMatrix = Factorizer(data, 4)
+
+    Factorizer(data, 4)
     distanceMatrix = symmetrize(distanceMatrix)
     duration = time.time()-start_time
     print('Duration : ', duration)
