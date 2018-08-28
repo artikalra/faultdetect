@@ -94,6 +94,32 @@ class Samples:
         q_dot = 1.0/2.0*m1.dot(omega) + quat_normalize_gain*(1-(q0**2 + q1**2 + q2**2 + q3**2))*q
         return q_dot
 
+    def KinematicModel2(self, w, s):
+        # inputs : state_prev  .:. states from the previous time t - 1.
+        #                          s = [s1 s2 s3 p q r]'
+        #                          where;
+        #                               s =  s1 * i + s2 * j + s3 * k
+        #                               w .:. describes the angular motion of the body
+        #                                     frame b with respect to navigation frame
+        #                                     North East Down(NED), expressed in body frame
+        #                               w = [p q r]'
+        # outputs : s_dot  .:. time derivative of spinnors
+        #
+        # s .:. spinnors
+        # q = s1 * i + s2 * j + s3 * k
+        s1, s2, s3 = s
+        # w .:. angular velocity vector with components p, q, r
+        # w = [p q r]'
+        # w describes the angular motion of the body frame b with respect to
+        # navigation frame NED, expressed in body frame.
+        omega = np.array(w)
+        n1 = np.cross(omega, s)
+        mag_s = math.sqrt(s1 * s1 + s2 * s2 + s3 * s3)
+        cots = 1/(math.tan(mag_s))
+        n2 = np.dot(s, omega) * (1 - mag_s * cots) / (mag_s * mag_s)
+        s_dot = 1.0 / 2.0 * n1 + np.dot(omega, (mag_s * 0.5 * cots)) + 0.5 * np.dot(s, n2)
+        return s_dot
+
 
     #to integrate using Runge-kutta
     def RK4(self, f, w0, q0, h):
