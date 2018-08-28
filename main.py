@@ -11,7 +11,33 @@ from data.cluster import Clustering
 if __name__ == '__main__':
     samples = rd.parse("data/17_07_06__10_21_07_SD.data")
 
+    # Calculation of spinnors
+    from pyquaternion import Quaternion
+    quatern_spin = np.zeros((3, len(samples._data)))
+    quatern_fault = np.zeros((4, len(samples._data)))
+    spinnors = np.zeros((4, len(samples._data)))
+    quatspinnors = np.zeros((3, len(samples._data)))
+    quatern_spin[:, 0] = [0.00954169, 0.01104921, 0.00936013]
+    quatern_fault[:, 0] = [0.99984563, 0.00954117, 0.01104861, 0.00935962]
+    h = 0.2
 
+    for i in range(1, len(sample._data)):
+        if i % 100 == 0:
+            print('spin ', i)
+        quatern_spin[:, i] = samples.RK4(samples.KinematicModel2, np.array(samples._data[:i][i - 1][1:4]),
+                                         quatern_spin[:, i - 1], h)
+        # print("quatspin", quatern_spin)
+        quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
+                                          quatern_fault[:, i - 1], h)
+        print(quatern_fault.shape)
+        my_quaternion = Quaternion(quatern_fault[:, i])
+        # print(my_quaternion)
+        quatspinnors[:, i] = Quaternion.log(my_quaternion).elements[1:4]
+        print("difference", quatern_spin - quatspinnors)
+    samples._data = np.hstack((np.array(samples._data), quatern_spin.T))
+    print((samples._data).shape)
+
+    """
     # Calculation of spinnors
     quatern_spin = np.zeros((3, len(samples._data)))
     #spinnors = np.zeros((4, len(samples._data)))
@@ -34,7 +60,7 @@ if __name__ == '__main__':
     # print(qlog1, qlog2)
     # print(Quaternion([0.988,0.085,0.100,0.083]))
 
-    """
+    
         #Calculation of spinnors
         from pyquaternion import Quaternion
         # quatern_fault = np.zeros((4,(len(samples._data)+1)))
@@ -66,7 +92,7 @@ if __name__ == '__main__':
     ## Downsampling
     breakn = 10
     nominal = np.array([1.0, 1.0, 0.0, 0.0])
-    new_array = np.zeros((1000, len(samples._data[0,:])))
+    new_array = np.zeros((20669, len(samples._data[0,:])))
     for i in range(len(new_array)):
         new_array[i, :] = np.mean(np.concatenate((samples._data[i * breakn:(i + 1) * breakn - 1][0:7],samples._data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
         #print(nominal in samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11])
