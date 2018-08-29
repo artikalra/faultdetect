@@ -133,6 +133,7 @@ def Factorizer(data, nprocs):
 
 
 if __name__ == '__main__':
+    down_sample = False
     # info('main line')
     fname = "17_07_06__10_21_07_SD_small.csv"
     if os.path.isfile(fname):
@@ -169,34 +170,34 @@ if __name__ == '__main__':
         df = pd.DataFrame(data, columns=['time', 'G1', 'G2', 'G3', 'A1', 'A2', 'A3', 'F1', 'F2', 'F3', 'F4', 'S1', 'S2', 'S3'])
         df.to_csv("17_07_06__10_21_07_SD.csv", index=None)
 
+    if down_sample:
+        ## Downsampling
+        breakn = 10
+        nominal = np.array([1.0, 1.0, 0.0, 0.0])
+        new_array = np.zeros((int(len(data)/breakn), len(data[0,:]))) #20669
+        for i in range(len(new_array)):
+            new_array[i, :] = np.mean(np.concatenate((data[i * breakn:(i + 1) * breakn - 1][0:7],data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
+            #print(nominal in data[i * breakn:(i + 1) * breakn - 1 , 7:11])
+            #print(np.array(data[i * breakn:(i + 1) * breakn - 1, 7:11]) != nominal)
+            if nominal in data[i * breakn:(i + 1) * breakn - 1 , 7:11]:
+                #print("no")
+                #if data[i * breakn:(i + 1) * breakn - 1][7:11] != nominal:
+                if  np.any(data[i * breakn:(i + 1) * breakn - 1 ,7:11] != nominal):
+                    #print("nono")
+                    new_array[i, 7:11] = np.array([2, 2, 2, 2]) # The transition case T=2 (where we have both nominal and faulty cases)
+                new_array[i, 7:11] = np.array([0, 0, 0, 0]) #Nominal Case N=0
+            else:
+                #print("yes")
+                new_array[i, 7:11] = np.array([1, 1, 1, 1]) # Faulty Case F=1
 
-    ## Downsampling
-    breakn = 10
-    nominal = np.array([1.0, 1.0, 0.0, 0.0])
-    new_array = np.zeros((int(len(data)/10), len(data[0,:]))) #20669
-    for i in range(len(new_array)):
-        new_array[i, :] = np.mean(np.concatenate((data[i * breakn:(i + 1) * breakn - 1][0:7],data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
-        #print(nominal in data[i * breakn:(i + 1) * breakn - 1 , 7:11])
-        #print(np.array(data[i * breakn:(i + 1) * breakn - 1, 7:11]) != nominal)
-        if nominal in data[i * breakn:(i + 1) * breakn - 1 , 7:11]:
-            #print("no")
-            #if data[i * breakn:(i + 1) * breakn - 1][7:11] != nominal:
-            if  np.any(data[i * breakn:(i + 1) * breakn - 1 ,7:11] != nominal):
-                #print("nono")
-                new_array[i, 7:11] = np.array([2, 2, 2, 2]) # The transition case T=2 (where we have both nominal and faulty cases)
-            new_array[i, 7:11] = np.array([0, 0, 0, 0]) #Nominal Case N=0
-        else:
-            #print("yes")
-            new_array[i, 7:11] = np.array([1, 1, 1, 1]) # Faulty Case F=1
+        data = new_array
 
-    data = new_array
-
-    # Record the downsampled data into csv for faster next run as well
-    df = pd.DataFrame(data)
-    df.to_csv("17_07_06__10_21_07_SD_small_ds.csv", header=None)
-    #print(data)
-    print("downsampling done")
-    print(np.array(data).shape)
+        # Record the downsampled data into csv for faster next run as well
+        df = pd.DataFrame(data)
+        df.to_csv("17_07_06__10_21_07_SD_small_ds.csv", index=None)
+        #print(data)
+        print("downsampling done")
+        print(np.array(data).shape)
 
 
 #function to calculate the geodesic distance between two curves
