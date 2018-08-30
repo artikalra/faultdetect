@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import pickle
-
+import pdb
 import pandas as pd
 import tempfile
 
@@ -110,7 +110,8 @@ def Factorizer(data, nprocs, method):
         with open(tf.name, 'wb') as f:
             np.save(f, finaldistances)
 
-    ssize = len(data) - 10 #breakn
+    breakn = 10
+    ssize = len(data) - breakn
     nr_elements = int(ssize/(nprocs-1))
     procs_list = []
     # distanceMatrix = np.zeros((ssize, ssize), dtype=float)
@@ -168,7 +169,7 @@ def Factorizer(data, nprocs, method):
 
 
 if __name__ == '__main__':
-    down_sample = False
+    down_sample = True
     # info('main line')
     # fname = "17_07_06__10_21_07_SD_small"
     fname = "data/17_07_06__10_21_07_SD_162k-168k"
@@ -186,30 +187,31 @@ if __name__ == '__main__':
         # spinnors = np.zeros((4, len(samples._data)))
         quatspinnors = np.zeros((3, len(samples._data)))
         quatern_spin[:, 0] = [0.00954169, 0.01104921, 0.00936013]
-        quatern_fault[:, 0] = [0.99984563, 0.00954117, 0.01104861, 0.00935962]
+        #quatern_fault[:, 0] = [0.99984563, 0.00954117, 0.01104861, 0.00935962]
         quatern_fault[:, 0] = [1., 0., 0., 0.]
-        h = 0.201667 # 60 Hz
+        h = 0.01667 # 60 Hz
+        time = np.array(samples._data)[:,0]
+        gyro = np.array(samples._data)[:,1:4]
 
         for i in range(1, len(samples._data)):
             if i % 100 == 0:
                 print('spin ', i)
-            quatern_spin[:, i] = samples.RK4(samples.KinematicModel2, np.array(samples._data[:i][i - 1][1:4]),
-                                             quatern_spin[:, i - 1], h)
+            h = time[i]-time[i-1]
+            quatern_spin[:, i] = samples.RK4(samples.KinematicModel2, gyro[i-1], quatern_spin[:,(i-1)] , h)
             # print("quatspin", quatern_spin)
-            quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
-                                              quatern_fault[:, i - 1], h)
+            quatern_fault[:, i] = samples.RK4(samples.KinematicModel, gyro[i-1], quatern_fault[:,(i-1)], h)
             # print(quatern_fault.shape)
             my_quaternion = Quaternion(quatern_fault[:, i])
             # print(my_quaternion)
             quatspinnors[:, i] = Quaternion.log(my_quaternion).elements[1:4]
             # print("difference", quatern_spin - quatspinnors)
         data = np.hstack((np.array(samples._data),quatspinnors.T))
+        data = np.hstack((data,quatern_spin.T))
         data = np.hstack((data, quatern_fault.T))
 
             # Record the processed data into csv for faster next run
-        df = pd.DataFrame(data, columns=['time', 'G1', 'G2', 'G3', 'A1', 'A2', 'A3', 'F1', 'F2', 'F3', 'F4', 'R1', 'R2', 'R3', 'Q1', 'Q2', 'Q3', 'Q4'])
+        df = pd.DataFrame(data, columns=['time', 'G1', 'G2', 'G3', 'A1', 'A2', 'A3', 'F1', 'F2', 'F3', 'F4', 'R1', 'R2', 'R3', 'R1d', 'R2d', 'R3d', 'Q1', 'Q2', 'Q3', 'Q4'])
         df.to_csv(fname+".csv", index=None)
-        print(data.shape)
 
     """
     # Calculation of spinnors
@@ -234,20 +236,26 @@ if __name__ == '__main__':
     # print(qlog1, qlog2)
     # print(Quaternion([0.988,0.085,0.100,0.083]))
 
-
+    
     if down_sample:
         ## Downsampling
         breakn = 10
         nominal = np.array([1.0, 1.0, 0.0, 0.0])
         new_array = np.zeros((int(len(data)/breakn), len(data[0,:]))) #20669
         for i in range(len(new_array)):
-            new_array[i, :] = np.mean(np.concatenate((data[i * breakn:(i + 1) * breakn - 1][0:7],data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
+            # new_array[i, :] = np.mean(np.concatenate((data[i * breakn:(i + 1) * breakn - 1][0:7],data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
+            block = data[(i*breakn):((i+1)*breakn+1)]
+            new_array[i, :] = np.mean(block, 0)
+            # print(i, new_array[i,:])
+            #print(np.concatenate((data[i * breakn:(i + 1) * breakn - 1][0:7],data[i * breakn:(i + 1) * breakn - 1][11:14])))
+            #pdb.set_trace()
+
             #print(nominal in data[i * breakn:(i + 1) * breakn - 1 , 7:11])
             #print(np.array(data[i * breakn:(i + 1) * breakn - 1, 7:11]) != nominal)
-            if nominal in data[i * breakn:(i + 1) * breakn - 1 , 7:11]:
+            if nominal in block[:,7:11]:
                 #print("no")
                 #if data[i * breakn:(i + 1) * breakn - 1][7:11] != nominal:
-                if  np.any(data[i * breakn:(i + 1) * breakn - 1 ,7:11] != nominal):
+                if  np.any(block[:,7:11] != nominal):
                     #print("nono")
                     new_array[i, 7:11] = np.array([2, 2, 2, 2]) # The transition case T=2 (where we have both nominal and faulty cases)
                 new_array[i, 7:11] = np.array([0, 0, 0, 0]) #Nominal Case N=0
@@ -255,7 +263,7 @@ if __name__ == '__main__':
                 #print("yes")
                 new_array[i, 7:11] = np.array([1, 1, 1, 1]) # Faulty Case F=1
 
-        data = new_array
+        data = new_array.copy()
 
         # Record the downsampled data into csv for faster next run as well
         df = pd.DataFrame(data)
@@ -324,7 +332,7 @@ if __name__ == '__main__':
 
     start_time = time.time()
   
-    Factorizer(data, 8, 1)
+    Factorizer(data, 2, 1)
 
     def load_files(file):
         data = np.load(file)
@@ -339,8 +347,8 @@ if __name__ == '__main__':
 
     duration = time.time()-start_time
     print('Duration : ', duration)
-
-    cl = Clustering(4, distanceMatrix)
+    cluster_nr = 2
+    cl = Clustering(cluster_nr , distanceMatrix)
     # print(cl.medioids)
     # print(distanceMatrix)
 
@@ -351,7 +359,7 @@ if __name__ == '__main__':
     with open("distancematrix.txt", 'wb') as f:
         np.save(f, distanceMatrix)
 
-    with open('clustered.txt', 'w') as f:
+    with open(str(cluster_nr)+'clustered.txt', 'w') as f:
         for p in cl.clusters:
             f.write(str(p[0]) + ',' + str(p[1]) + '\n')
     print(cl.clusters)
@@ -371,7 +379,7 @@ if __name__ == '__main__':
     plt.show()
 
     # To plot the results directly using the text file
-    filename = './clustered.txt'
+    filename = str(cluster_nr)+'clustered.txt'
     R = []
     with open(filename, 'r') as f:
         i = 0
