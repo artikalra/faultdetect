@@ -172,7 +172,8 @@ if __name__ == '__main__':
     down_sample = True
     # info('main line')
     # fname = "17_07_06__10_21_07_SD_small"
-    fname = "data/17_07_06__10_21_07_SD_162k-168k"
+    # fname = "data/17_07_06__10_21_07_SD_162k-168k"
+    fname = "data/17_07_06__10_21_07_SD"
     if os.path.isfile(fname+".csv"):
         df = pd.read_csv(fname+".csv")
         data = df.values #df.reset_index().values
@@ -190,13 +191,13 @@ if __name__ == '__main__':
         #quatern_fault[:, 0] = [0.99984563, 0.00954117, 0.01104861, 0.00935962]
         quatern_fault[:, 0] = [1., 0., 0., 0.]
         h = 0.01667 # 60 Hz
-        time = np.array(samples._data)[:,0]
+        ins_time = np.array(samples._data)[:,0]
         gyro = np.array(samples._data)[:,1:4]
 
         for i in range(1, len(samples._data)):
             if i % 100 == 0:
                 print('spin ', i)
-            h = time[i]-time[i-1]
+            h = ins_time[i]-ins_time[i-1]
             quatern_spin[:, i] = samples.RK4(samples.KinematicModel2, gyro[i-1], quatern_spin[:,(i-1)] , h)
             # print("quatspin", quatern_spin)
             quatern_fault[:, i] = samples.RK4(samples.KinematicModel, gyro[i-1], quatern_fault[:,(i-1)], h)
@@ -210,7 +211,7 @@ if __name__ == '__main__':
         data = np.hstack((data, quatern_fault.T))
 
             # Record the processed data into csv for faster next run
-        df = pd.DataFrame(data, columns=['time', 'G1', 'G2', 'G3', 'A1', 'A2', 'A3', 'F1', 'F2', 'F3', 'F4', 'R1', 'R2', 'R3', 'R1d', 'R2d', 'R3d', 'Q1', 'Q2', 'Q3', 'Q4'])
+        df = pd.DataFrame(data, columns=['time', 'G1', 'G2', 'G3', 'A1', 'A2', 'A3', 'F1', 'F2', 'F3', 'F4', 'MODE', 'ALT', 'R1', 'R2', 'R3', 'R1d', 'R2d', 'R3d', 'Q1', 'Q2', 'Q3', 'Q4'])
         df.to_csv(fname+".csv", index=None)
 
     """
