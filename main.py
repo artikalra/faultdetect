@@ -13,6 +13,8 @@ from data.cluster import Clustering
 from multiprocessing import Process, JoinableQueue
 import threading 
 import os
+import glob
+
 
 def info(title):
     print(title)
@@ -59,7 +61,7 @@ class SummingThread(threading.Thread):
         self.distance_matrix = finaldistances
         
 def Factorizer(data, nprocs):
-    def Process_distance( data, start_indx, stop_indx, out_q):
+    def Process_distance( data, start_indx, stop_indx):
         breakn = 10
         d = 0
         ssize = len(data) - breakn
@@ -90,27 +92,28 @@ def Factorizer(data, nprocs):
     ssize = len(data) - 10 #breakn
     nr_elements = int(ssize/(nprocs-1))
     procs_list = []
-    distanceMatrix = np.zeros((ssize, ssize), dtype=float)
+    # distanceMatrix = np.zeros((ssize, ssize), dtype=float)
 
     # start_time = time.time()
 
     # Distribute the job to threads
-    out_q = JoinableQueue()
+    # out_q = JoinableQueue()
     # for rep in range(1):
-    for i in range(nprocs-1):
-        p = Process(target=Process_distance,
-                args=(data, (i*nr_elements), (i+1)*nr_elements, out_q) )
-        procs_list.append(p)
-        p.start()
-        print(p.is_alive())
+    if nprocs != 1:
+        for i in range(nprocs-1):
+            p = Process(target=Process_distance,
+                    args=(data, (i*nr_elements), (i+1)*nr_elements) )
+            procs_list.append(p)
+            p.start()
+            # print(p.is_alive())
 
     p = Process(target=Process_distance,
-                args=(data, ((nprocs-1)*nr_elements), ssize, out_q) )
+                args=(data, ((nprocs-1)*nr_elements), ssize) )
     procs_list.append(p)
     p.start()
 
     print(procs_list)
-    print('Here I am to join !')
+    print('Joining !')
     for p in procs_list:
         p.join()
         print(p.is_alive())
@@ -128,47 +131,77 @@ def Factorizer(data, nprocs):
         # proc_list = []
         # print(procs_list)
 
-    return distanceMatrix
+    # return distanceMatrix
 
 
 
 if __name__ == '__main__':
     down_sample = False
     # info('main line')
-    fname = "17_07_06__10_21_07_SD_small.csv"
-    if os.path.isfile(fname):
-        df = pd.read_csv(fname)
+    # fname = "17_07_06__10_21_07_SD_small"
+    fname = "data/17_07_06__10_21_07_SD_162k-168k"
+    if os.path.isfile(fname+".csv"):
+        df = pd.read_csv(fname+".csv")
         data = df.values #df.reset_index().values
 
     else:
-        samples = rd.parse("data/17_07_06__10_21_07_SD.data")
+        samples = rd.parse(fname+".data")
 
-        #Calculation of spinnors
+        # Calculation of spinnors
         from pyquaternion import Quaternion
-        # quatern_fault = np.zeros((4,(len(samples._data)+1)))
+        quatern_spin = np.zeros((3, len(samples._data)))
         quatern_fault = np.zeros((4, len(samples._data)))
         # spinnors = np.zeros((4, len(samples._data)))
         quatspinnors = np.zeros((3, len(samples._data)))
-
+        quatern_spin[:, 0] = [0.00954169, 0.01104921, 0.00936013]
+        quatern_fault[:, 0] = [0.99984563, 0.00954117, 0.01104861, 0.00935962]
         quatern_fault[:, 0] = [1., 0., 0., 0.]
-        h = 0.16667 # 60Hz 
+        h = 0.201667 # 60 Hz
 
-        for i in range(1, (len(samples._data))):
+        for i in range(1, len(samples._data)):
             if i % 100 == 0:
                 print('spin ', i)
+            quatern_spin[:, i] = samples.RK4(samples.KinematicModel2, np.array(samples._data[:i][i - 1][1:4]),
+                                             quatern_spin[:, i - 1], h)
+            # print("quatspin", quatern_spin)
             quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
                                               quatern_fault[:, i - 1], h)
+            # print(quatern_fault.shape)
             my_quaternion = Quaternion(quatern_fault[:, i])
-            # spinnors[:,i]= Quaternion.log(my_quaternion)
-            # quatspinnors[:,i] = spinnors[1:4,i]
-            quatspinnors[:,i] = Quaternion.log(my_quaternion).elements[1:4]
+            # print(my_quaternion)
+            quatspinnors[:, i] = Quaternion.log(my_quaternion).elements[1:4]
+            # print("difference", quatern_spin - quatspinnors)
         data = np.hstack((np.array(samples._data),quatspinnors.T))
-        #print((samples._data).shape)
-        #print(samples._data)
+        data = np.hstack((data, quatern_fault.T))
 
-        # Record the processed data into csv for faster next run
-        df = pd.DataFrame(data, columns=['time', 'G1', 'G2', 'G3', 'A1', 'A2', 'A3', 'F1', 'F2', 'F3', 'F4', 'S1', 'S2', 'S3'])
-        df.to_csv("17_07_06__10_21_07_SD.csv", index=None)
+            # Record the processed data into csv for faster next run
+        df = pd.DataFrame(data, columns=['time', 'G1', 'G2', 'G3', 'A1', 'A2', 'A3', 'F1', 'F2', 'F3', 'F4', 'R1', 'R2', 'R3', 'Q1', 'Q2', 'Q3', 'Q4'])
+        df.to_csv(fname+".csv", index=None)
+        print(data.shape)
+
+    """
+    # Calculation of spinnors
+    quatern_spin = np.zeros((3, len(samples._data)))
+    #spinnors = np.zeros((4, len(samples._data)))
+    #quatspinnors = np.zeros((3, len(samples._data)))
+    quatern_spin[:, 0] = [0.0853,   0.1004,   0.0833]
+    h = 0.2
+
+    for i in range(1, 10000):
+        if i % 100 == 0:
+            print('spin ', i)
+        quatern_spin[:, i] = samples.RK4(samples.KinematicModel2, np.array(samples._data[:i][i - 1][1:4]),
+                                          quatern_spin[:, i - 1], h)
+        #print("quatspin", quatern_spin)
+    samples._data = np.hstack((np.array(samples._data), quatern_spin.T))
+    print((samples._data).shape)
+    #print(samples._data)
+    """
+    # qlog1 = Quaternion.log(Quaternion([0.988,0.085,0.100,0.083]))
+    # qlog2 = Quaternion.log(Quaternion([1.0, 0.0 , 0.0, 0.0]))
+    # print(qlog1, qlog2)
+    # print(Quaternion([0.988,0.085,0.100,0.083]))
+
 
     if down_sample:
         ## Downsampling
@@ -194,7 +227,7 @@ if __name__ == '__main__':
 
         # Record the downsampled data into csv for faster next run as well
         df = pd.DataFrame(data)
-        df.to_csv("17_07_06__10_21_07_SD_small_ds.csv", index=None)
+        df.to_csv(fname+"_ds.csv", index=None)
         #print(data)
         print("downsampling done")
         print(np.array(data).shape)
@@ -253,97 +286,31 @@ if __name__ == '__main__':
         d2 = 1 / n * sum(sum((qf - qi) ** 2, 0))
         L = np.sqrt(d1 + d2)
         return L
-    # for m in range(len(samples._data)):
 
     def symmetrize(matrix):
         return matrix + matrix.T
 
-
-    # def distance(data, start, stop):
-    #     breakn = 10
-    #     d = 0
-    #     ssize = len(data) - breakn
-    #     finaldistances = np.zeros((ssize , ssize))  # ((len(samples._data)-2)* (len(samples._data)-2))
-    #     i = 0
-
-    #     for m in range(start, stop):
-    #         if m % 100 == 0:
-    #             print('dist ', m)
-
-    #         c1 = np.concatenate(
-    #             ((data[m - 1:m + breakn - 1, 4:7]).T, (data[m - 1:m + breakn - 1, 11:14]).T))
-    #         # print(c1.shape)
-    #         for n in range(1, ssize + 1):
-    #             if n < m:
-    #                 c2 = np.concatenate(
-    #                     ((data[n - 1:n + breakn - 1, 4:7]).T, (data[n - 1:n + breakn - 1, 11:14]).T))
-    #                 d = geod_dim(c1, c2, 1, 6)
-    #                 finaldistances[m-1][n-1] = d
-    #             i += 1
-    #     distanceMatrix = symmetrize((finaldistances))
-    #     return distanceMatrix
-
-    #distanceMatrix = distance((samples._data), 1, (len(samples._data)+1-breakn))
-    
-    #data = samples._data
-    
-    # ssize = len(data) - 10 #breakn
-    # dsize = len(data)
-    # nr_procs = 3
-    # nr_elements = 22 #int(ssize/nr_threads)
-    # procs_list = []
-    # queue_list = []
-    # distanceMatrix = np.zeros((ssize, ssize), dtype=float)
-
-    # start_time = time.time()
-    # # Distribute the job to threads
-
-    # out_q = Queue()
-
-    # for i in range(nr_procs):
-    #     # th = SummingThread(data, (i*nr_elements)-nr_elements, i*nr_elements)
-
-    #     p = Process(target=Process_distance, args=(data, (i*nr_elements), (i+1)*nr_elements, out_q) )
-    #     procs_list.append(p)
-    #     p.start()
-
-    # # # Addint the last bit of the data
-    # # th = SummingThread(data, nr_elements*nr_threads, ssize)
-    # # thread_list.append(th)
-
-    # for i in range(nr_procs):
-    #     print(out_q.get())
-
-    # for p in procs_list:
-    #     p.join()
-
-    # # for thread in thread_list:
-    # #     distanceMatrix += thread.finaldistances #thread.distance_matrix
-    # # i = 0
-    # # for q in queue_list:
-    # #     distanceMatrix += q.get()
-    # #     print(i, q.get())
-    # #     i += 1
-
-    # distanceMatrix = symmetrize(distanceMatrix)
-
-    # th1 = SummingThread(data, 0, 100)
-    # print('Created the thread 1')
-    # th1.start()
-
-    # th1.join()
     start_time = time.time()
-    # print('Here is the 1st thread : ',th1.distance_matrix)
-    # distanceMatrix = Factorizer(data, 4)
+  
+    Factorizer(data, 2)
 
-    Factorizer(data, 4)
-    distanceMatrix = symmetrize(distanceMatrix)
+    def load_files(file):
+        data = np.load(file)
+        return data
+
+    # file_list = !ls ./tmp_*
+    file_list = glob.glob('./tmp_*')
+    file_list[:]
+
+    frames = [ load_files(f) for f in file_list ]
+    distanceMatrix = sum(frames)+sum(frames).T
+
     duration = time.time()-start_time
     print('Duration : ', duration)
-    print('Here I am ! 2 ')
+
     cl = Clustering(4, distanceMatrix)
     # print(cl.medioids)
-    print(distanceMatrix)
+    # print(distanceMatrix)
 
     # A = np.array(distanceMatrix)
     # with open(r"dist_mat.pkl", "wb") as output_file:
@@ -372,7 +339,7 @@ if __name__ == '__main__':
     plt.show()
 
     # To plot the results directly using the text file
-    filename = './results.txt'
+    filename = './clustered.txt'
     R = []
     with open(filename, 'r') as f:
         i = 0
