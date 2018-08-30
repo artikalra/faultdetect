@@ -60,8 +60,8 @@ class SummingThread(threading.Thread):
                 i += 1
         self.distance_matrix = finaldistances
         
-def Factorizer(data, nprocs):
-    def Process_distance( data, start_indx, stop_indx):
+def Factorizer(data, nprocs, method):
+    def Geodesic_distance( data, start_indx, stop_indx):
         breakn = 10
         d = 0
         ssize = len(data) - breakn
@@ -70,7 +70,7 @@ def Factorizer(data, nprocs):
 
         for m in range(start_indx, stop_indx):
             if m % 100 == 0:
-                print('dist ', m)
+                print('Geodesic dist ', m)
 
             c1 = np.concatenate(
                 ((data[(m-1):(m+breakn-1), 4:7]).T, (data[(m-1):(m+breakn-1), 11:14]).T))
@@ -88,6 +88,27 @@ def Factorizer(data, nprocs):
         with open(tf.name, 'wb') as f:
             np.save(f, finaldistances)
         # out_q.put(finaldistance)
+    def L2distance(data, start_indx, stop_indx):
+        breakn = 10  # This is the sliding window size
+        d = 0
+        ssize = len(data) - breakn
+        finaldistances = np.zeros((ssize, ssize))  # ((len(samples._data)-2)* (len(samples._data)-2))
+        i = 0
+
+        for m in range(start_indx, stop_indx):  # start limit=1 stop limit ssize+1
+            if m % 100 == 0:
+                print('L2 dist ', m)
+            for n in range(1, ssize + 1):
+                d = 0.0
+                for j in range(0, breakn):
+                    c1 = np.concatenate(((data[m - 1 + j, 4:7]), (data[m - 1 + j, 11:14])))
+                    c2 = np.concatenate(((data[n - 1 + j, 4:7]), (data[n - 1 + j, 11:14])))
+                    d += np.sum([(a - b) ** 2 for a, b in zip(c1, c2)])
+                finaldistances[m - 1][n - 1] = math.sqrt(d)
+                i += 1
+        tf = tempfile.NamedTemporaryFile(prefix='tmp_', dir='./', delete=False)
+        with open(tf.name, 'wb') as f:
+            np.save(f, finaldistances)
 
     ssize = len(data) - 10 #breakn
     nr_elements = int(ssize/(nprocs-1))
@@ -101,14 +122,25 @@ def Factorizer(data, nprocs):
     # for rep in range(1):
     if nprocs != 1:
         for i in range(nprocs-1):
-            p = Process(target=Process_distance,
-                    args=(data, (i*nr_elements), (i+1)*nr_elements) )
+            if method == 0:
+                p = Process(target=Geodesic_distance,
+                        args=(data, (i*nr_elements), (i+1)*nr_elements) )
+            else :
+                p = Process(target=L2distance,
+                        args=(data, (i*nr_elements), (i+1)*nr_elements) )
             procs_list.append(p)
             p.start()
-            # print(p.is_alive())
+            print(p.is_alive())
 
-    p = Process(target=Process_distance,
+    if method == 0:
+        p = Process(target=Geodesic_distance,
                 args=(data, ((nprocs-1)*nr_elements), ssize) )
+    else :
+        p = Process(target=L2distance,
+                args=(data, ((nprocs-1)*nr_elements), ssize) )
+    
+    # p = Process(target=Process_distance,
+    #             args=(data, ((nprocs-1)*nr_elements), ssize) )
     procs_list.append(p)
     p.start()
 
@@ -292,7 +324,7 @@ if __name__ == '__main__':
 
     start_time = time.time()
   
-    Factorizer(data, 2)
+    Factorizer(data, 8, 1)
 
     def load_files(file):
         data = np.load(file)
