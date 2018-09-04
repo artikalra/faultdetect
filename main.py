@@ -97,7 +97,7 @@ if __name__ == '__main__':
         #print(samples._data)
     """
 
-    ### Downsampling
+    ## Downsampling
     breakn = 10
     nominal = np.array([1.0, 1.0, 0.0, 0.0])
     new_array = np.zeros((20669, len(samples._data[0,:])))
