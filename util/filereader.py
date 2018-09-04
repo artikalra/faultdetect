@@ -10,8 +10,6 @@ def parse(filename):
         sk = float(1.0)
         sl = float(0.0) # correct these default fault values !
         sm = float(0.0)
-        pm = int(0) # PPRZ_MODE
-        al = float(185.0)
         for line in f:
             fields = line.split()
             #print('fields : ', fields)
@@ -27,10 +25,6 @@ def parse(filename):
                 ay = float(fields[4])
                 az = float(fields[5])
                 p += 1
-            elif fields[2] == "PPRZ_MODE":
-                pm = float(fields[3])
-            elif fields[2] == "GPS":
-                al = float(fields[7])/1000.
             elif fields[2] == "SETTINGS":
                 #print('We have a settings !',float(fields[3]),float(fields[4]),float(fields[5]),float(fields[6]) )
                 #sleep(15.)
@@ -40,7 +34,7 @@ def parse(filename):
                 sm = float(fields[6])
                 #p += 1
             if p == 2:
-                samples.insert((t, ox, oy, oz, ax, ay, az, sj, sk, sl, sm, pm, al))
+                samples.insert((t, ox, oy, oz, ax, ay, az, sj, sk, sl, sm ))
                 p = 0
     return samples
 #

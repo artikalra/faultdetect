@@ -1,218 +1,41 @@
 import util.filereader as rd
-import math, time
+import math
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import pickle
-import pdb
-import pandas as pd
-import tempfile
+
 
 from data.cluster import Clustering
 
-from multiprocessing import Process, JoinableQueue
-import threading 
-import os
-import glob
-
-
-def info(title):
-    print(title)
-    print('module name:', __name__)
-    if hasattr(os, 'getppid'):  # only available on Unix
-        print('parent process:', os.getppid())
-    print('process id:', os.getpid())
-
-
-class SummingThread(threading.Thread):
-    def __init__(self,data,start_indx,stop_indx):
-        super(SummingThread, self).__init__()
-        self.data = data
-        self.start_indx=start_indx
-        self.stop_indx=stop_indx
-        self.total=0
-
-    def run(self):
-        # for i in range(self.start_indx,self.stop_indx):
-        #     self.total+=i
-        self._distance(self.data, self.start_indx, self.stop_indx)
-
-    def _distance(self, data, start_indx, stop_indx):
-        breakn = 10
-        d = 0
-        ssize = len(data) - breakn
-        finaldistances = np.zeros((ssize , ssize))  # ((len(samples._data)-2)* (len(samples._data)-2))
-        i = 0
-
-        for m in range(start_indx, stop_indx):
-            if m % 100 == 0:
-                print('dist ', m)
-
-            c1 = np.concatenate(
-                ((data[m - 1:m + breakn - 1, 4:7]).T, (data[m - 1:m + breakn - 1, 11:14]).T))
-            # print(c1.shape)
-            for n in range(1, ssize + 1):
-                if n < m:
-                    c2 = np.concatenate(
-                        ((data[n - 1:n + breakn - 1, 4:7]).T, (data[n - 1:n + breakn - 1, 11:14]).T))
-                    d = geod_dim(c1, c2, 1, 6)
-                    finaldistances[m-1][n-1] = d
-                i += 1
-        self.distance_matrix = finaldistances
-        
-def Factorizer(data, nprocs, method):
-    def Geodesic_distance( data, start_indx, stop_indx):
-        breakn = 10
-        d = 0
-        ssize = len(data) - breakn
-        finaldistances = np.zeros((ssize , ssize), dtype=float)  # ((len(samples._data)-2)* (len(samples._data)-2))
-        i = 0
-
-        for m in range(start_indx, stop_indx):
-            if m % 100 == 0:
-                print('Geodesic dist ', m)
-
-            c1 = np.concatenate(
-                ((data[(m-1):(m+breakn-1), 4:7]).T, (data[(m-1):(m+breakn-1), 11:14]).T))
-            for n in range(1, ssize + 1):
-                if n < m:
-                    c2 = np.concatenate(
-                        ((data[n - 1:n + breakn - 1, 4:7]).T, (data[n - 1:n + breakn - 1, 11:14]).T))
-                    d = geod_dim(c1, c2, 1, 6)
-                    # print(d)
-                    finaldistances[m-1,n-1] = d
-                i += 1
-        # print(finaldistances)
-        # Random file generator of python
-        tf = tempfile.NamedTemporaryFile(prefix='tmp_', dir='./', delete=False)
-        with open(tf.name, 'wb') as f:
-            np.save(f, finaldistances)
-        # out_q.put(finaldistance)
-    def L2distance(data, start_indx, stop_indx):
-        breakn = 10  # This is the sliding window size
-        d = 0
-        ssize = len(data) - breakn
-        finaldistances = np.zeros((ssize, ssize))  # ((len(samples._data)-2)* (len(samples._data)-2))
-        i = 0
-
-        for m in range(start_indx, stop_indx):  # start limit=1 stop limit ssize+1
-            if m % 100 == 0:
-                print('L2 dist ', m)
-            for n in range(1, ssize + 1):
-                d = 0.0
-                for j in range(0, breakn):
-                    c1 = np.concatenate(((data[m - 1 + j, 4:7]), (data[m - 1 + j, 11:14])))
-                    c2 = np.concatenate(((data[n - 1 + j, 4:7]), (data[n - 1 + j, 11:14])))
-                    d += np.sum([(a - b) ** 2 for a, b in zip(c1, c2)])
-                finaldistances[m - 1][n - 1] = math.sqrt(d)
-                i += 1
-        tf = tempfile.NamedTemporaryFile(prefix='tmp_', dir='./', delete=False)
-        with open(tf.name, 'wb') as f:
-            np.save(f, finaldistances)
-
-    breakn = 10
-    ssize = len(data) - breakn
-    nr_elements = int(ssize/(nprocs-1))
-    procs_list = []
-    # distanceMatrix = np.zeros((ssize, ssize), dtype=float)
-
-    # start_time = time.time()
-
-    # Distribute the job to threads
-    # out_q = JoinableQueue()
-    # for rep in range(1):
-    if nprocs != 1:
-        for i in range(nprocs-1):
-            if method == 0:
-                p = Process(target=Geodesic_distance,
-                        args=(data, (i*nr_elements), (i+1)*nr_elements) )
-            else :
-                p = Process(target=L2distance,
-                        args=(data, (i*nr_elements), (i+1)*nr_elements) )
-            procs_list.append(p)
-            p.start()
-            print(p.is_alive())
-
-    if method == 0:
-        p = Process(target=Geodesic_distance,
-                args=(data, ((nprocs-1)*nr_elements), ssize) )
-    else :
-        p = Process(target=L2distance,
-                args=(data, ((nprocs-1)*nr_elements), ssize) )
-    
-    # p = Process(target=Process_distance,
-    #             args=(data, ((nprocs-1)*nr_elements), ssize) )
-    procs_list.append(p)
-    p.start()
-
-    print(procs_list)
-    print('Joining !')
-    for p in procs_list:
-        p.join()
-        print(p.is_alive())
-        
-        # if not any(p.is_alive() for p in r) and out_queue.empty():
-
-        # print('Here I am to get() !')
-        # i =0
-        # while out_q.empty() == False:
-        #     distanceMatrix += out_q.get() #False works with 300 data...
-        #     print(i, distanceMatrix)
-        #     i += 1
-        # # for p in procs_list:
-        # #     p.()
-        # proc_list = []
-        # print(procs_list)
-
-    # return distanceMatrix
-
-
-
 if __name__ == '__main__':
-    down_sample = True
-    # info('main line')
-    # fname = "17_07_06__10_21_07_SD_small"
-    # fname = "data/17_07_06__10_21_07_SD_162k-168k"
-    fname = "data/17_07_06__10_21_07_SD"
-    if os.path.isfile(fname+".csv"):
-        df = pd.read_csv(fname+".csv")
-        data = df.values #df.reset_index().values
+    samples = rd.parse("data/17_07_06__10_21_07_SD.data")
 
-    else:
-        samples = rd.parse(fname+".data")
+    # Calculation of spinnors
+    from pyquaternion import Quaternion
+    quatern_spin = np.zeros((3, len(samples._data)))
+    quatern_fault = np.zeros((4, len(samples._data)))
+    spinnors = np.zeros((4, len(samples._data)))
+    quatspinnors = np.zeros((3, len(samples._data)))
+    quatern_spin[:, 0] = [0.00954169, 0.01104921, 0.00936013]
+    quatern_fault[:, 0] = [0.99984563, 0.00954117, 0.01104861, 0.00935962]
+    h = 0.2
 
-        # Calculation of spinnors
-        from pyquaternion import Quaternion
-        quatern_spin = np.zeros((3, len(samples._data)))
-        quatern_fault = np.zeros((4, len(samples._data)))
-        # spinnors = np.zeros((4, len(samples._data)))
-        quatspinnors = np.zeros((3, len(samples._data)))
-        quatern_spin[:, 0] = [0.00954169, 0.01104921, 0.00936013]
-        #quatern_fault[:, 0] = [0.99984563, 0.00954117, 0.01104861, 0.00935962]
-        quatern_fault[:, 0] = [1., 0., 0., 0.]
-        h = 0.01667 # 60 Hz
-        ins_time = np.array(samples._data)[:,0]
-        gyro = np.array(samples._data)[:,1:4]
-
-        for i in range(1, len(samples._data)):
-            if i % 100 == 0:
-                print('spin ', i)
-            h = ins_time[i]-ins_time[i-1]
-            quatern_spin[:, i] = samples.RK4(samples.KinematicModel2, gyro[i-1], quatern_spin[:,(i-1)] , h)
-            # print("quatspin", quatern_spin)
-            quatern_fault[:, i] = samples.RK4(samples.KinematicModel, gyro[i-1], quatern_fault[:,(i-1)], h)
-            # print(quatern_fault.shape)
-            my_quaternion = Quaternion(quatern_fault[:, i])
-            # print(my_quaternion)
-            quatspinnors[:, i] = Quaternion.log(my_quaternion).elements[1:4]
-            # print("difference", quatern_spin - quatspinnors)
-        data = np.hstack((np.array(samples._data),quatspinnors.T))
-        data = np.hstack((data,quatern_spin.T))
-        data = np.hstack((data, quatern_fault.T))
-
-            # Record the processed data into csv for faster next run
-        df = pd.DataFrame(data, columns=['time', 'G1', 'G2', 'G3', 'A1', 'A2', 'A3', 'F1', 'F2', 'F3', 'F4', 'MODE', 'ALT', 'R1', 'R2', 'R3', 'R1d', 'R2d', 'R3d', 'Q1', 'Q2', 'Q3', 'Q4'])
-        df.to_csv(fname+".csv", index=None)
+    for i in range(1, len(sample._data)):
+        if i % 100 == 0:
+            print('spin ', i)
+        quatern_spin[:, i] = samples.RK4(samples.KinematicModel2, np.array(samples._data[:i][i - 1][1:4]),
+                                         quatern_spin[:, i - 1], h)
+        # print("quatspin", quatern_spin)
+        quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
+                                          quatern_fault[:, i - 1], h)
+        print(quatern_fault.shape)
+        my_quaternion = Quaternion(quatern_fault[:, i])
+        # print(my_quaternion)
+        quatspinnors[:, i] = Quaternion.log(my_quaternion).elements[1:4]
+        print("difference", quatern_spin - quatspinnors)
+    samples._data = np.hstack((np.array(samples._data), quatern_spin.T))
+    print((samples._data).shape)
 
     """
     # Calculation of spinnors
@@ -231,47 +54,64 @@ if __name__ == '__main__':
     samples._data = np.hstack((np.array(samples._data), quatern_spin.T))
     print((samples._data).shape)
     #print(samples._data)
-    """
+
     # qlog1 = Quaternion.log(Quaternion([0.988,0.085,0.100,0.083]))
     # qlog2 = Quaternion.log(Quaternion([1.0, 0.0 , 0.0, 0.0]))
     # print(qlog1, qlog2)
     # print(Quaternion([0.988,0.085,0.100,0.083]))
 
     
-    if down_sample:
-        ## Downsampling
-        breakn = 10
-        nominal = np.array([1.0, 1.0, 0.0, 0.0])
-        new_array = np.zeros((int(len(data)/breakn), len(data[0,:]))) #20669
-        for i in range(len(new_array)):
-            # new_array[i, :] = np.mean(np.concatenate((data[i * breakn:(i + 1) * breakn - 1][0:7],data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
-            block = data[(i*breakn):((i+1)*breakn+1)]
-            new_array[i, :] = np.mean(block, 0)
-            # print(i, new_array[i,:])
-            #print(np.concatenate((data[i * breakn:(i + 1) * breakn - 1][0:7],data[i * breakn:(i + 1) * breakn - 1][11:14])))
-            #pdb.set_trace()
+        #Calculation of spinnors
+        from pyquaternion import Quaternion
+        # quatern_fault = np.zeros((4,(len(samples._data)+1)))
+        quatern_fault = np.zeros((4, len(samples._data)))
+        spinnors = np.zeros((4, len(samples._data)))
+        quatspinnors = np.zeros((3, len(samples._data)))
 
-            #print(nominal in data[i * breakn:(i + 1) * breakn - 1 , 7:11])
-            #print(np.array(data[i * breakn:(i + 1) * breakn - 1, 7:11]) != nominal)
-            if nominal in block[:,7:11]:
-                #print("no")
-                #if data[i * breakn:(i + 1) * breakn - 1][7:11] != nominal:
-                if  np.any(block[:,7:11] != nominal):
-                    #print("nono")
-                    new_array[i, 7:11] = np.array([2, 2, 2, 2]) # The transition case T=2 (where we have both nominal and faulty cases)
-                new_array[i, 7:11] = np.array([0, 0, 0, 0]) #Nominal Case N=0
-            else:
-                #print("yes")
-                new_array[i, 7:11] = np.array([1, 1, 1, 1]) # Faulty Case F=1
+        quatern_fault[:, 0] = [1., 0., 0., 0.]
+        h = 0.2
 
-        data = new_array.copy()
+        for i in range(1, 10):
+            if i % 100 == 0:
+                print('spin ', i)
+            quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
+                                              quatern_fault[:, i - 1], h)
+            print(quatern_fault.shape)
+            my_quaternion = Quaternion(quatern_fault[:, i])
+            #print(my_quaternion)
+            quatspinnors[:, i] = Quaternion.log(my_quaternion).elements[1:4]
+            print("quatspinnors",quatspinnors)
 
-        # Record the downsampled data into csv for faster next run as well
-        df = pd.DataFrame(data)
-        df.to_csv(fname+"_ds.csv", index=None)
-        #print(data)
-        print("downsampling done")
-        print(np.array(data).shape)
+            #quatspinnors[:, i] = spinnors[1:4,i]
+            #print(quatspinnors.shape)
+        samples._data = np.hstack((np.array(samples._data),quatspinnors.T))
+        print((samples._data).shape)
+        #print(samples._data)
+    """
+
+    ## Downsampling
+    breakn = 10
+    nominal = np.array([1.0, 1.0, 0.0, 0.0])
+    new_array = np.zeros((20669, len(samples._data[0,:])))
+    for i in range(len(new_array)):
+        new_array[i, :] = np.mean(np.concatenate((samples._data[i * breakn:(i + 1) * breakn - 1][0:7],samples._data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
+        #print(nominal in samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11])
+        #print(np.array(samples._data[i * breakn:(i + 1) * breakn - 1, 7:11]) != nominal)
+        if nominal in samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11]:
+            #print("no")
+            #if samples._data[i * breakn:(i + 1) * breakn - 1][7:11] != nominal:
+            if  np.any(samples._data[i * breakn:(i + 1) * breakn - 1 ,7:11] != nominal):
+                #print("nono")
+                new_array[i, 7:11] = np.array([2, 2, 2, 2]) # The transition case T=2 (where we have both nominal and faulty cases)
+            new_array[i, 7:11] = np.array([0, 0, 0, 0]) #Nominal Case N=0
+        else:
+            #print("yes")
+            new_array[i, 7:11] = np.array([1, 1, 1, 1]) # Faulty Case F=1
+
+    samples._data = new_array
+    #print(samples._data)
+    print("downsampling done")
+    print(np.array(samples._data).shape)
 
 
 #function to calculate the geodesic distance between two curves
@@ -327,40 +167,42 @@ if __name__ == '__main__':
         d2 = 1 / n * sum(sum((qf - qi) ** 2, 0))
         L = np.sqrt(d1 + d2)
         return L
+    # for m in range(len(samples._data)):
 
     def symmetrize(matrix):
         return matrix + matrix.T
 
-    start_time = time.time()
-  
-    Factorizer(data, 2, 1)
 
-    def load_files(file):
-        data = np.load(file)
-        return data
+    def distance(data, start, stop):
+        breakn = 10
+        d = 0
+        ssize = len(data) - breakn
+        finaldistances = np.zeros((ssize , ssize))  # ((len(samples._data)-2)* (len(samples._data)-2))
+        i = 0
 
-    # file_list = !ls ./tmp_*
-    file_list = glob.glob('./tmp_*')
-    file_list[:]
+        for m in range(start, stop):
+            if m % 100 == 0:
+                print('dist ', m)
 
-    frames = [ load_files(f) for f in file_list ]
-    distanceMatrix = sum(frames)+sum(frames).T
+            c1 = np.concatenate(
+                ((data[m - 1:m + breakn - 1, 4:7]).T, (data[m - 1:m + breakn - 1, 11:14]).T))
+            # print(c1.shape)
+            for n in range(1, ssize + 1):
+                if n < m:
+                    c2 = np.concatenate(
+                        ((data[n - 1:n + breakn - 1, 4:7]).T, (data[n - 1:n + breakn - 1, 11:14]).T))
+                    d = geod_dim(c1, c2, 1, 6)
+                    finaldistances[m-1][n-1] = d
+                i += 1
+        distanceMatrix = symmetrize((finaldistances))
+        return distanceMatrix
 
-    duration = time.time()-start_time
-    print('Duration : ', duration)
-    cluster_nr = 2
-    cl = Clustering(cluster_nr , distanceMatrix)
-    # print(cl.medioids)
-    # print(distanceMatrix)
+    distanceMatrix = distance((samples._data), 1, (len(samples._data)+1-breakn))
 
-    # A = np.array(distanceMatrix)
-    # with open(r"dist_mat.pkl", "wb") as output_file:
-    #     pickle.dump(distanceMatrix, output_file)
 
-    with open("distancematrix.txt", 'wb') as f:
-        np.save(f, distanceMatrix)
-
-    with open(str(cluster_nr)+'clustered.txt', 'w') as f:
+    cl = Clustering(4, distanceMatrix)
+    print(cl.medioids)
+    with open('results.txt', 'w') as f:
         for p in cl.clusters:
             f.write(str(p[0]) + ',' + str(p[1]) + '\n')
     print(cl.clusters)
@@ -368,19 +210,17 @@ if __name__ == '__main__':
 
 # To plot the pixel graph
 
-    # pickle.dump(distanceMatrix, open("save.p", "wb"))
-
-    # distance_matrix = pickle.load(open("save.p", "rb"))
-    # diff = distanceMatrix - distance_matrix
-    # print("difference of the matrices:" , diff)
-    # print(distance_matrix)
-    plt.figure()
-    plt.matshow(distanceMatrix, cmap=plt.cm.gray)
+    pickle.dump(distanceMatrix, open("save.p", "wb"))
+    distance_matrix = pickle.load(open("save.p", "rb"))
+    diff = distanceMatrix - distance_matrix
+    print("difference of the matrices:" , diff)
+    print(distance_matrix)
+    plt.matshow(distance_matrix, cmap=plt.cm.gray)
     plt.legend()
     plt.show()
 
     # To plot the results directly using the text file
-    filename = str(cluster_nr)+'clustered.txt'
+    filename = './results.txt'
     R = []
     with open(filename, 'r') as f:
         i = 0
@@ -582,15 +422,7 @@ if __name__ == '__main__':
     print(finalMatrix)
 
 """
-# def get_timed_interruptable(q, timeout):
-#     stoploop = time.monotonic() + timeout - 1
-#     while time.monotonic() < stoploop:
-#         try:
-#             return q.get(timeout=1)  # Allow check for Ctrl-C every second
-#         except queue.Empty:
-#             pass
-#     # Final wait for last fraction of a second
-#     return q.get(timeout=max(0, stoploop + 1 - time.monotonic())) 
+
 
 
 
