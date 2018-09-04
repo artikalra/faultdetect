@@ -21,7 +21,7 @@ if __name__ == '__main__':
     quatern_fault[:, 0] = [0.99984563, 0.00954117, 0.01104861, 0.00935962]
     h = 0.2
 
-    for i in range(1, len(sample._data)):
+    for i in range(1, 1000):
         if i % 100 == 0:
             print('spin ', i)
         quatern_spin[:, i] = samples.RK4(samples.KinematicModel2, np.array(samples._data[:i][i - 1][1:4]),
@@ -29,13 +29,21 @@ if __name__ == '__main__':
         # print("quatspin", quatern_spin)
         quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
                                           quatern_fault[:, i - 1], h)
-        print(quatern_fault.shape)
+        #print(quatern_fault.shape)
         my_quaternion = Quaternion(quatern_fault[:, i])
         # print(my_quaternion)
         quatspinnors[:, i] = Quaternion.log(my_quaternion).elements[1:4]
-        print("difference", quatern_spin - quatspinnors)
+        #print("difference", quatern_spin - quatspinnors)
     samples._data = np.hstack((np.array(samples._data), quatern_spin.T))
     print((samples._data).shape)
+
+    figure = plt.figure()
+
+    figure, ax = plt.subplots()
+    plt.plot(samples._data[:, 0], samples._data[:, 10])
+    ax.axvspan(100 , 2000, facecolor='g', alpha=0.5)
+    ax.axvspan(2000, 3000, facecolor='b', alpha=0.5)
+    plt.show()
 
     """
     # Calculation of spinnors
@@ -89,7 +97,7 @@ if __name__ == '__main__':
         #print(samples._data)
     """
 
-    ## Downsampling
+    ### Downsampling
     breakn = 10
     nominal = np.array([1.0, 1.0, 0.0, 0.0])
     new_array = np.zeros((20669, len(samples._data[0,:])))
@@ -112,6 +120,11 @@ if __name__ == '__main__':
     #print(samples._data)
     print("downsampling done")
     print(np.array(samples._data).shape)
+
+    figure = plt.figure()
+    plt.plot(samples._data[:, 0], samples._data[:, 10])
+    plt.show()
+
 
 
 #function to calculate the geodesic distance between two curves
