@@ -4,45 +4,47 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import pickle
+from scipy.integrate import odeint
 
 
 from data.cluster import Clustering
 
 if __name__ == '__main__':
-    samples = rd.parse("data/17_07_06__10_21_07_SD.data")
+    samples = rd.parse("data/17_07_06__10_21_07_SD_162k-168k.data")
 
     # Calculation of spinnors
     from pyquaternion import Quaternion
     quatern_spin = np.zeros((3, len(samples._data)))
     quatern_fault = np.zeros((4, len(samples._data)))
-    spinnors = np.zeros((4, len(samples._data)))
     quatspinnors = np.zeros((3, len(samples._data)))
     quatern_spin[:, 0] = [0.00954169, 0.01104921, 0.00936013]
-    quatern_fault[:, 0] = [0.99984563, 0.00954117, 0.01104861, 0.00935962]
-    h = 0.2
+    #quatern_fault[:, 0] = [0.99984563, 0.00954117, 0.01104861, 0.00935962]
+    quatern_fault[:, 0] = [1.0, 0.0, 0.0, 0.0]
+    h = 0.0167
+    gyro = np.array(samples._data)[:, 1:4]
 
-    for i in range(1, 1000):
+    for i in range(1, len(samples._data)):
         if i % 100 == 0:
             print('spin ', i)
         quatern_spin[:, i] = samples.RK4(samples.KinematicModel2, np.array(samples._data[:i][i - 1][1:4]),
                                          quatern_spin[:, i - 1], h)
-        # print("quatspin", quatern_spin)
-        quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
-                                          quatern_fault[:, i - 1], h)
-        #print(quatern_fault.shape)
+        #quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
+                                          #quatern_fault[:, i - 1], h)
+        
+        quatern_fault[:,i]=(odeint(samples.KinematicModel, quatern_fault[:, i-1], [np.array(samples._data[:i][i - 1][0]),np.array(samples._data[:i+1][i][0])], args=(np.array(samples._data[:i][i - 1][1:4]),)))[1,:]
         my_quaternion = Quaternion(quatern_fault[:, i])
-        # print(my_quaternion)
         quatspinnors[:, i] = Quaternion.log(my_quaternion).elements[1:4]
-        #print("difference", quatern_spin - quatspinnors)
-    samples._data = np.hstack((np.array(samples._data), quatern_spin.T))
+    samples._data = np.hstack((np.array(samples._data), quatspinnors.T))
     print((samples._data).shape)
 
     figure = plt.figure()
+    plt.plot(samples._data[:, 0], samples._data[:, 11])
+    #ax.axvspan(100 , 2000, facecolor='g', alpha=0.5)
+    #ax.axvspan(2000, 3000, facecolor='b', alpha=0.5)
+    plt.show()
 
-    figure, ax = plt.subplots()
+    figure = plt.figure()
     plt.plot(samples._data[:, 0], samples._data[:, 10])
-    ax.axvspan(100 , 2000, facecolor='g', alpha=0.5)
-    ax.axvspan(2000, 3000, facecolor='b', alpha=0.5)
     plt.show()
 
     """
@@ -100,32 +102,69 @@ if __name__ == '__main__':
     ## Downsampling
     breakn = 10
     nominal = np.array([1.0, 1.0, 0.0, 0.0])
-    new_array = np.zeros((20669, len(samples._data[0,:])))
+    new_array = np.zeros((600, len(samples._data[0, :])))
+    #print(new_array)
     for i in range(len(new_array)):
-        new_array[i, :] = np.mean(np.concatenate((samples._data[i * breakn:(i + 1) * breakn - 1][0:7],samples._data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
-        #print(nominal in samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11])
-        #print(np.array(samples._data[i * breakn:(i + 1) * breakn - 1, 7:11]) != nominal)
-        if nominal in samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11]:
-            #print("no")
-            #if samples._data[i * breakn:(i + 1) * breakn - 1][7:11] != nominal:
-            if  np.any(samples._data[i * breakn:(i + 1) * breakn - 1 ,7:11] != nominal):
-                #print("nono")
-                new_array[i, 7:11] = np.array([2, 2, 2, 2]) # The transition case T=2 (where we have both nominal and faulty cases)
-            new_array[i, 7:11] = np.array([0, 0, 0, 0]) #Nominal Case N=0
-        else:
-            #print("yes")
-            new_array[i, 7:11] = np.array([1, 1, 1, 1]) # Faulty Case F=1
 
-    samples._data = new_array
-    #print(samples._data)
+
+        new_array[i, :] = np.mean(np.concatenate((samples._data[i * breakn:(i + 1) * breakn - 1][0:7],
+                                                  samples._data[i * breakn:(i + 1) * breakn - 1][11:14])), 0)
+        # print(nominal in samples._data[i * breakn:(i + 1) * breakn - 1 , 7:11])
+        # print(np.array(samples._data[i * breakn:(i + 1) * breakn - 1, 7:11]) != nominal)
+
+        if nominal in samples._data[i * breakn:(i + 1) * breakn - 1, 7:11]:
+            # print("no")
+            # if samples._data[i * breakn:(i + 1) * breakn - 1][7:11] != nominal:
+            if np.any(samples._data[i * breakn:(i + 1) * breakn - 1, 7:11] != nominal):
+                # print("nono")
+                new_array[i, 7:11] = np.array(
+                    [2, 2, 2, 2])  # The transition case T=2 (where we have both nominal and faulty cases)
+            new_array[i, 7:11] = np.array([0, 0, 0, 0])  # Nominal Case N=0
+        else:
+            # print("yes")
+            new_array[i, 7:11] = np.array([1, 1, 1, 1])  # Faulty Case F=1
+        print(new_array[i, 7:11])
+
+
+    samples._data = new_array.copy()
+    # print(samples._data)
     print("downsampling done")
     print(np.array(samples._data).shape)
 
+
     figure = plt.figure()
-    plt.plot(samples._data[:, 0], samples._data[:, 10])
+    plt.plot(samples._data[:, 0], samples._data[:, 11])
     plt.show()
 
 
+
+
+#function to calculate the L2distance by updating the quaternions in each siding window
+    def L2dist(data, start, stop):
+        breakn = 1  # This is the sliding window size
+        d = 0
+        ssize = len(data) - breakn
+        finaldistances = np.zeros((ssize, ssize))  # ((len(samples._data)-2)* (len(samples._data)-2))
+        i = 0
+
+        for m in range(start, stop):  # start limit=1 stop limit ssize+1
+            if m % 100 == 0:
+                print('dist ', m)
+            for n in range(1, ssize+1):
+                d = 0.0
+                for j in range(0, breakn):
+                    quatern_fault[:,i] = (odeint(samples.KinematicModel, quatern_fault[:, i - 1],
+                                                  [(data[m - 1 + j,0]),(data[m + j,0])],
+                                                  args=((data[m - 1 + j, 4:7]),)))[1, :]
+                    my_quaternion = Quaternion(quatern_fault[:,i])
+                    spinnor = Quaternion.log(my_quaternion).elements[1:4]
+                    c1 = np.concatenate(((data[m - 1 + j, 4:7]), (spinnor[m - 1 + j, :])))
+                    c2 = np.concatenate(((data[n - 1 + j, 4:7]), (spinnor[n - 1 + j, :])))
+                    d += np.sum([(a - b) ** 2 for a, b in zip(c1, c2)])
+                finaldistances[m - 1][n - 1] = math.sqrt(d)
+                i += 1
+        distanceMatrix = symmetrize((finaldistances))
+        return distanceMatrix
 
 #function to calculate the geodesic distance between two curves
     def geod_dim(gamma_i, gamma_f, m, dim):
@@ -182,6 +221,9 @@ if __name__ == '__main__':
         return L
     # for m in range(len(samples._data)):
 
+    # to compute to integration of the square of L2norm for all the trajectories
+
+
     def symmetrize(matrix):
         return matrix + matrix.T
 
@@ -196,7 +238,6 @@ if __name__ == '__main__':
         for m in range(start, stop):
             if m % 100 == 0:
                 print('dist ', m)
-
             c1 = np.concatenate(
                 ((data[m - 1:m + breakn - 1, 4:7]).T, (data[m - 1:m + breakn - 1, 11:14]).T))
             # print(c1.shape)
@@ -210,10 +251,34 @@ if __name__ == '__main__':
         distanceMatrix = symmetrize((finaldistances))
         return distanceMatrix
 
-    distanceMatrix = distance((samples._data), 1, (len(samples._data)+1-breakn))
+
+    def L2distance(data, start, stop):
+        breakn = 1  # This is the sliding window size
+        d = 0
+        ssize = len(data) - breakn
+        finaldistances = np.zeros((ssize, ssize))  # ((len(samples._data)-2)* (len(samples._data)-2))
+        i = 0
+
+        for m in range(start, stop):  # start limit=1 stop limit ssize+1
+            if m % 100 == 0:
+                print('dist ', m)
+            for n in range(1, ssize+1):
+                d = 0.0
+                for j in range(0, breakn):
+                    c1 = np.concatenate(((data[m - 1 + j, 4:7]), (data[m - 1 + j, 11:14])))
+                    c2 = np.concatenate(((data[n - 1 + j, 4:7]), (data[n - 1 + j, 11:14])))
+                    d += np.sum([(a - b) ** 2 for a, b in zip(c1, c2)])
+                finaldistances[m - 1][n - 1] = math.sqrt(d)
+                i += 1
+        distanceMatrix = symmetrize((finaldistances))
+        return distanceMatrix
+
+    breakn = 1
+    distanceMatrix = L2distance((samples._data), 1,(len(samples._data)+1- breakn ) )  #(len(samples._data) + 1 - breakn)
+    print(distanceMatrix.shape)
 
 
-    cl = Clustering(4, distanceMatrix)
+    cl = Clustering(2, distanceMatrix)
     print(cl.medioids)
     with open('results.txt', 'w') as f:
         for p in cl.clusters:
@@ -289,44 +354,9 @@ if __name__ == '__main__':
     plt.axis([0, 100, 0, 5])
     plt.show()
 
+
     
-    coeff = scipy.integrate.newton_cotes(len(samples._data))
-    print(coeff)
-
-    def integrate(function, a, b):
-        ##coeff = [7, 32, 12, 32, 7]
-        result = 0
-        for i in range(0, len(coeff)):
-            x = a + (i * (b - a)) / (len(coeff) - 1)
-            result += coeff[i] * function(x)
-        result = result * ((b - a) / sum(coeff))
-        return result
-
-    def func(x):
-        #return x ** 0*distances
-        return x ** 3 - 4 * x + 9
-
-    print(integrate(func, -7.0, 7.0))
-    
-    # to compute to integration of the square of L2norm for all the trajectories
-    breakn = 10
-    d = 0
-    ssize = len(samples._data) - breakn
-    finaldistances = np.zeros((ssize * ssize,))  # ((len(samples._data)-2)* (len(samples._data)-2))
-    i = 0
-
-    for m in range(1, ssize + 1):
-        if m % 100 == 0:
-            print('dist ', m)
-        for n in range(1, ssize + 1):
-            d = 0.0
-            for j in range(0, breakn):
-                d += np.sum(
-                    [(a - b) ** 2 for a, b in zip(samples._data[m - 1 + j][4:7], samples._data[n - 1 + j][4:7])])
-            finaldistances[i] = math.sqrt(d)
-            i += 1
-    #   print(finaldistances[0:300])
-    distanceMatrix = np.reshape((finaldistances), (ssize, ssize))
+   
 
 
     # to compute the quaternions from the rotation rates obtained from the data  and then take their logarithm
@@ -342,7 +372,7 @@ if __name__ == '__main__':
     quatern_fault[:, 0] = [1., 0., 0., 0.]
 
     # # h is the time step, delta_t, which is constant for the momoent as 0.02s (50Hz of data acquisition), but you can also make it variable too
-    h = 0.2
+    h = 0.167
 
     p = 0
     for i in range(1, ssize + breakn):
