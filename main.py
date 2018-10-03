@@ -26,6 +26,22 @@ if __name__ == '__main__':
 
 
 
+# function to calculate quaternions corresponding to each sliding window
+    def calcquaternion(data):
+        breakn = 10
+        ssize = len(data) - breakn
+        qua = np.zeros((4, breakn, ssize))
+        qua[:, 0, 0] = [1.0, 0.0, 0.0, 0.0]
+        for i in range(1, ssize + 1):
+            if i % 100 == 0:
+                print('spin ', i)
+                qua[:, j, i - 1] = (odeint(samples.KinematicModel, qua[:, 0, 0],
+                                           [(data[i - 1 + j , 0]),
+                                            (data[i + j , 0])],
+                                           args=((data[i - 1 + j ,1:4]),)))[1, :]
+        return qua
+
+
     breakn=10
     ssize = len(samples._data) - breakn
     qua = np.zeros((4,breakn,ssize))
