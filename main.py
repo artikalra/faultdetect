@@ -23,19 +23,30 @@ if __name__ == '__main__':
     h = 0.0167
     gyro = np.array(samples._data)[:, 1:4]
 
-    for i in range(1, len(samples._data)):
+
+
+
+    breakn=10
+    ssize = len(samples._data) - breakn
+    qua = np.zeros((4,breakn,ssize))
+    qua[:, 0, 0] = [1.0, 0.0, 0.0, 0.0]
+    for i in range(1, ssize+1):
         if i % 100 == 0:
             print('spin ', i)
-        quatern_spin[:, i] = samples.RK4(samples.KinematicModel2, np.array(samples._data[:i][i - 1][1:4]),
-                                         quatern_spin[:, i - 1], h)
-        #quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
-                                          #quatern_fault[:, i - 1], h)
-        
-        quatern_fault[:,i]=(odeint(samples.KinematicModel, quatern_fault[:, i-1], [np.array(samples._data[:i][i - 1][0]),np.array(samples._data[:i+1][i][0])], args=(np.array(samples._data[:i][i - 1][1:4]),)))[1,:]
-        my_quaternion = Quaternion(quatern_fault[:, i])
-        quatspinnors[:, i] = Quaternion.log(my_quaternion).elements[1:4]
-    samples._data = np.hstack((np.array(samples._data), quatspinnors.T))
-    print((samples._data).shape)
+        for j in range(0, breakn):
+            #print(np.array(samples._data[:i + j +1][i + j][0]))
+            #print(np.array(samples._data[:i+j] [i - 1 + j][1:4]))
+            #print(qua[:,j, i-1])
+            qua[: , j , i-1]=(odeint(samples.KinematicModel, qua[:,0, 0], [np.array(samples._data[:i+j][i - 1 + j][0]),np.array(samples._data[:i+j+1][i+j][0])], args=(np.array(samples._data[:i+j][i - 1 + j][1:4]),)))[1,:]
+            #print(qua)
+           # my_quaternion = Quaternion(quatern_fault[:, i])
+        #    quatspinnors[:, i] = Quaternion.log(my_quaternion).elements[1:4]
+    #samples._data = np.hstack((np.array(samples._data), quatspinnors.T))
+    #print((samples._data).shape)
+
+
+
+
 
     figure = plt.figure()
     plt.plot(samples._data[:, 0], samples._data[:, 11])
@@ -315,6 +326,23 @@ if __name__ == '__main__':
     plt.show()
 
     """
+    
+    
+    # calculation of spinnors
+        for i in range(1, len(samples._data)):
+        if i % 100 == 0:
+            print('spin ', i)
+        quatern_spin[:, i] = samples.RK4(samples.KinematicModel2, np.array(samples._data[:i][i - 1][1:4]),
+                                         quatern_spin[:, i - 1], h)
+        #quatern_fault[:, i] = samples.RK4(samples.KinematicModel, np.array(samples._data[:i][i - 1][1:4]),
+                                          #quatern_fault[:, i - 1], h)
+        quatern_fault[:,i]=(odeint(samples.KinematicModel, quatern_fault[:, i-1], [np.array(samples._data[:i][i - 1][0]),np.array(samples._data[:i+1][i][0])], args=(np.array(samples._data[:i][i - 1][1:4]),)))[1,:]
+        my_quaternion = Quaternion(quatern_fault[:, i])
+        quatspinnors[:, i] = Quaternion.log(my_quaternion).elements[1:4]
+    samples._data = np.hstack((np.array(samples._data), quatspinnors.T))
+    print((samples._data).shape)
+    
+    
         # TO calculate distances between accelerometer and quaternion functions components
         breakn = 10
         d = 0
