@@ -26,21 +26,8 @@ if __name__ == '__main__':
 
 
 
-# function to calculate quaternions corresponding to each sliding window
-    def calcquaternion(data):
-        breakn = 10
-        ssize = len(data) - breakn
-        qua = np.zeros((4, breakn, ssize))
-        qua[:, 0, 0] = [1.0, 0.0, 0.0, 0.0]
-        for i in range(1, ssize + 1):
-            if i % 100 == 0:
-                print('spin ', i)
-                qua[:, j, i - 1] = (odeint(samples.KinematicModel, qua[:, 0, 0],
-                                           [(data[i - 1 + j , 0]),
-                                            (data[i + j , 0])],
-                                           args=((data[i - 1 + j ,1:4]),)))[1, :]
-        return qua
 
+# should paste quaternion function here
 
     breakn=10
     ssize = len(samples._data) - breakn
@@ -57,13 +44,12 @@ if __name__ == '__main__':
             #print(qua)
            # my_quaternion = Quaternion(quatern_fault[:, i])
         #    quatspinnors[:, i] = Quaternion.log(my_quaternion).elements[1:4]
+    samples._data = np.array(samples._data)
+    print((samples._data).shape)
     #samples._data = np.hstack((np.array(samples._data), quatspinnors.T))
     #print((samples._data).shape)
 
-
-
-
-
+    """
     figure = plt.figure()
     plt.plot(samples._data[:, 0], samples._data[:, 11])
     #ax.axvspan(100 , 2000, facecolor='g', alpha=0.5)
@@ -73,7 +59,7 @@ if __name__ == '__main__':
     figure = plt.figure()
     plt.plot(samples._data[:, 0], samples._data[:, 10])
     plt.show()
-
+    """
     """
     # Calculation of spinnors
     quatern_spin = np.zeros((3, len(samples._data)))
@@ -129,6 +115,7 @@ if __name__ == '__main__':
     ## Downsampling
     breakn = 10
     nominal = np.array([1.0, 1.0, 0.0, 0.0])
+    #print((samples._data).shape)
     new_array = np.zeros((600, len(samples._data[0, :])))
     #print(new_array)
     for i in range(len(new_array)):
@@ -159,12 +146,75 @@ if __name__ == '__main__':
     print(np.array(samples._data).shape)
 
 
-    figure = plt.figure()
-    plt.plot(samples._data[:, 0], samples._data[:, 11])
-    plt.show()
+    # figure = plt.figure()
+    # plt.plot(samples._data[:, 0], samples._data[:, 11])
+    # plt.show()
+
+    # function to calculate quaternions corresponding to each sliding window
+    def calcquaternion(data):
+        breakn = 10
+        ssize = len(data) - breakn
+        qua = np.zeros((4, breakn, ssize))
+        qua[:, 0, 0] = [1.0, 0.0, 0.0, 0.0]
+        for i in range(1, ssize + 1):
+            if i % 100 == 0:
+                print('spin ', i)
+            for j in range(0, breakn):
+                qua[:, j, i - 1] = (odeint(samples.KinematicModel, qua[:, 0, 0],
+                                           [(data[i - 1 + j, 0]),
+                                            (data[i + j, 0])],
+                                           args=((data[i - 1 + j, 1:4]),)))[1, :]
+        return qua
+
+
+    def calcspinnors(data):
+        breakn = 10
+        ssize = len(data) - breakn
+        qua = np.zeros((4, breakn, ssize))
+        spinnor = np.zeros((3, breakn, ssize))
+        qua[:, 0, 0] = [1.0, 0.0, 0.0, 0.0]
+        for i in range(1, ssize + 1):
+            # if i % 100 == 0:
+            #     print('calculatingspin ', i)
+            for j in range(0, breakn):
+                qua[:, j, i - 1] = (odeint(samples.KinematicModel, qua[:, 0, 0],
+                                           [(data[i - 1 + j, 0]),
+                                            (data[i + j, 0])],
+                                           args=((data[i - 1 + j, 1:4]),)))[1, :]
+
+                my_quaternion = Quaternion(qua[:, j, i - 1])
+                spinnor[:,j, i-1] = Quaternion.log(my_quaternion).elements[1:4]
+        return spinnor
 
 
 
+    # function to calculate the L2distance by updating the quaternions in each siding window
+    def L2slidingdist(data, start, stop):
+        breakn = 1  # This is the sliding window size
+        d = 0
+        ssize = len(data) - breakn
+        finaldistances = np.zeros((ssize, ssize))  # ((len(samples._data)-2)* (len(samples._data)-2))
+        i = 0
+        spinnor = calcspinnors(data)
+        for m in range(start, stop):  # start limit=1 stop limit ssize+1
+
+            if m % 100 == 0:
+                print('dist ', m)
+
+            for n in range(1, ssize + 1):
+                d = 0.0
+                # my_quaternion = Quaternion(qua[:,:,i])
+                # spinnor = Quaternion.log(my_quaternion).elements[1:4]
+                for j in range(0, breakn):
+                    #spinnor = calcspinnors(data)
+                    #print(spinnor.shape)
+                    c1 = np.concatenate(((data[m - 1 + j, 4:7]), (spinnor[:, j-1, m - 1 + j-10])))
+                    c2 = np.concatenate(((data[n - 1 + j, 4:7]), (spinnor[:, j-1, n - 1 + j-10])))
+                    d += np.sum([(a - b) ** 2 for a, b in zip(c1, c2)])
+                finaldistances[m - 1][n - 1] = math.sqrt(d)
+                i += 1
+        distanceMatrix = symmetrize((finaldistances))
+        return distanceMatrix
 
 #function to calculate the L2distance by updating the quaternions in each siding window
     def L2dist(data, start, stop):
@@ -301,7 +351,7 @@ if __name__ == '__main__':
         return distanceMatrix
 
     breakn = 1
-    distanceMatrix = L2distance((samples._data), 1,(len(samples._data)+1- breakn ) )  #(len(samples._data) + 1 - breakn)
+    distanceMatrix = L2slidingdist((samples._data), 1,(len(samples._data)+1- breakn ) )  #(len(samples._data) + 1 - breakn)
     print(distanceMatrix.shape)
 
 
